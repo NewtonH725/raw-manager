@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   build-windows:
+    name: Build Windows Portable & Setup Installer
     runs-on: windows-latest
 
     steps:
@@ -42,32 +43,54 @@ jobs:
       - name: Build Windows Release
         run: flutter build windows --release
 
-      - name: Package Windows Bundle
+      - name: Package Windows Portable Bundle
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path releases/RAW_Manager_Windows_x64
-          Copy-Item -Recurse -Force build/windows/x64/runner/Release/* releases/RAW_Manager_Windows_x64/
-          Copy-Item assets/guida_raw_manager.md releases/RAW_Manager_Windows_x64/GUIDA_UTENTE.md
-          Compress-Archive -Path releases/RAW_Manager_Windows_x64/* -DestinationPath releases/RAW_Manager_Windows_x64.zip -Force
+          New-Item -ItemType Directory -Force -Path releases/RAW_Manager_Windows_x64_Portable
+          Copy-Item -Recurse -Force build/windows/x64/runner/Release/* releases/RAW_Manager_Windows_x64_Portable/
+          Copy-Item assets/guida_raw_manager.md releases/RAW_Manager_Windows_x64_Portable/GUIDA_UTENTE.md
+          Compress-Archive -Path releases/RAW_Manager_Windows_x64_Portable/* -DestinationPath releases/RAW_Manager_Windows_x64_Portable.zip -Force
 
-      - name: Upload Windows Artifact
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows Installer (Setup.exe)
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          }
+          Write-Host "Compilazione Setup con Inno Setup: $iscc"
+          & $iscc windows/inno_setup.iss
+
+      - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: RAW_Manager_Windows_x64
-          path: releases/RAW_Manager_Windows_x64.zip
+          path: |
+            releases/RAW_Manager_Windows_x64_Setup.exe
+            releases/RAW_Manager_Windows_x64_Portable.zip
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: v1.0.0
-          name: "RAW Manager v1.0.0 (Windows x64)"
+          name: "RAW Manager v1.0.0 (Windows x64 - Setup & Portable)"
           body: |
-            ## RAW Manager v1.0.0
-            Release ufficiale per Windows a 64-bit.
+            ## RAW Manager v1.0.0 (Windows a 64-bit)
             
-            ### Istruzioni per Windows:
-            1. Scarica ed estrai **`RAW_Manager_Windows_x64.zip`**.
-            2. Avvia **`raw_manager.exe`** per eseguire subito l'applicazione.
+            Scegli la versione che preferisci:
+            
+            ### 1. Versione Installabile (Setup guidato con icona e menù Start)
+            - Scarica ed esegui **`RAW_Manager_Windows_x64_Setup.exe`**.
+            - Installa il programma in `Program Files`, crea automaticamente l'icona sul Desktop e nel Menù Start di Windows e include il disinstallatore pulito.
+            
+            ### 2. Versione Portable (senza installazione)
+            - Scarica ed estrai **`RAW_Manager_Windows_x64_Portable.zip`**.
+            - Apri la cartella estratta e fai doppio clic su **`raw_manager.exe`** per usarlo direttamente anche da chiavetta USB.
           files: |
-            releases/RAW_Manager_Windows_x64.zip
+            releases/RAW_Manager_Windows_x64_Setup.exe
+            releases/RAW_Manager_Windows_x64_Portable.zip
