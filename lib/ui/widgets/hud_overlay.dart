@@ -25,38 +25,38 @@ class HudOverlay extends ConsumerWidget {
     final notifier = ref.read(cullerProvider.notifier);
     final queue = ref.watch(fileOpsQueueProvider);
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Top Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xCC1E1E1E),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white12),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black45,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Wrap(
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E),
+        border: Border(bottom: BorderSide(color: Colors.white12, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black45,
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Riga Principale: Titolo, Badge Info, Contatori, File, Cartelle, Auto-Advance
+              Wrap(
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  // App Title, Info Icon & Counters
+                  // App Title, Logo & Contatore Foto
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.camera_rounded, color: Colors.amber, size: 22),
+                      const Icon(Icons.camera_rounded, color: Colors.amber, size: 24),
                       const SizedBox(width: 8),
                       const Text(
                         'RAW Manager',
@@ -67,7 +67,7 @@ class HudOverlay extends ConsumerWidget {
                           letterSpacing: 0.5,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       // Badge Classico Informazioni
                       Tooltip(
                         message: 'Guida e Informazioni (I / F1)',
@@ -123,7 +123,7 @@ class HudOverlay extends ConsumerWidget {
                     ],
                   ),
 
-                  // File Name & Selected Badge
+                  // Nome File Corrente & Badge Selezionata
                   if (currentPhoto != null)
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -166,13 +166,13 @@ class HudOverlay extends ConsumerWidget {
                       ],
                     ),
 
-                  // Actions & Folders
+                  // Cartelle Sorgente / Destinazione & Interruttore Auto-Advance
                   Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 8,
                     runSpacing: 4,
                     children: [
-                      // Folder Buttons
+                      // Cartella Sorgente
                       OutlinedButton.icon(
                         icon: const Icon(Icons.folder_open, size: 16, color: Colors.white70),
                         label: Text(
@@ -185,6 +185,7 @@ class HudOverlay extends ConsumerWidget {
                         ),
                         onPressed: onPickSource,
                       ),
+                      // Cartella Destinazione
                       OutlinedButton.icon(
                         icon: const Icon(Icons.drive_file_move_outline, size: 16, color: Colors.amber),
                         label: Text(
@@ -223,59 +224,48 @@ class HudOverlay extends ConsumerWidget {
                   ),
                 ],
               ),
-            ),
 
-            const SizedBox(height: 8),
-
-            // EXIF Bar & I/O Queue Info
-            if (currentPhoto != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xAA1E1E1E),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (extractedData != null && extractedData!.exifSummary.isNotEmpty)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.info_outline, color: Colors.white60, size: 14),
-                            const SizedBox(width: 6),
-                            Text(
-                              extractedData!.exifSummary,
-                              style: const TextStyle(color: Colors.white70, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      if (queue.pendingCount > 0 || queue.isProcessing)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Coda I/O: ${queue.pendingCount + (queue.isProcessing ? 1 : 0)} in corso',
-                              style: const TextStyle(color: Colors.amber, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
+              // Riquadro Dati EXIF e Stato Coda I/O (mostrato subito sotto la riga comandi)
+              if (currentPhoto != null) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (extractedData != null && extractedData!.exifSummary.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.info_outline, color: Colors.white60, size: 14),
+                          const SizedBox(width: 6),
+                          Text(
+                            extractedData!.exifSummary,
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    if (queue.pendingCount > 0 || queue.isProcessing)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Coda I/O: ${queue.pendingCount + (queue.isProcessing ? 1 : 0)} in corso',
+                            style: const TextStyle(color: Colors.amber, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
-              ),
-          ],
+              ],
+            ],
+          ),
         ),
       ),
     );

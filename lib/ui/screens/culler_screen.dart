@@ -20,6 +20,7 @@ class _CullerScreenState extends ConsumerState<CullerScreen> {
   final FocusNode _focusNode = FocusNode();
   final TransformationController _transformationController = TransformationController();
   double _currentScale = 1.0;
+  double _dragDistance = 0.0;
 
   @override
   void initState() {
@@ -151,110 +152,126 @@ class _CullerScreenState extends ConsumerState<CullerScreen> {
         focusNode: _focusNode,
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
-        child: Stack(
+        child: Column(
           children: [
-            // Area Immagine con GestureDetector & InteractiveViewer
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () {
-                  _focusNode.requestFocus();
-                  notifier.toggleHud();
-                },
-                onDoubleTap: _toggleZoom,
-                onHorizontalDragEnd: (_currentScale <= 1.05)
-                    ? (details) {
-                        if (details.primaryVelocity != null) {
-                          if (details.primaryVelocity! < -200) {
-                            _resetZoom();
-                            notifier.nextPhoto();
-                          } else if (details.primaryVelocity! > 200) {
-                            _resetZoom();
-                            notifier.prevPhoto();
-                          }
-                        }
-                      }
-                    : null,
-                child: Center(
-                  child: _buildImageContent(state, cachedData),
-                ),
+            // Barra superiore fissa Material 3 (ancorata in alto, mai sovrapposta all'immagine)
+            if (state.isHudVisible)
+              HudOverlay(
+                currentPhoto: currentPhoto,
+                extractedData: cachedData,
+                onPickSource: _pickSourceFolder,
+                onPickTarget: _pickTargetFolder,
               ),
-            ),
 
-            // Pop-up Centrale per Permessi Android (Sostituisce il vecchio MaterialBanner)
-            if (!state.hasStoragePermission && !kIsWeb && Platform.isAndroid)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black54,
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      child: Card(
-                        color: const Color(0xFF242424),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 12,
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.folder_shared_rounded, color: Colors.amber, size: 48),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Accesso ai File Richiesto',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+            // Area Immagine e controlli touch (occupa tutto il resto dello schermo)
+            Expanded(
+              child: Stack(
+                children: [
+                  // Area Immagine con GestureDetector & InteractiveViewer
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        _focusNode.requestFocus();
+                        notifier.toggleHud();
+                      },
+                      onDoubleTap: _toggleZoom,
+                      onHorizontalDragStart: (_currentScale <= 1.05)
+                          ? (_) {
+                              _dragDistance = 0.0;
+                            }
+                          : null,
+                      onHorizontalDragUpdate: (_currentScale <= 1.05)
+                          ? (details) {
+                              _dragDistance += details.delta.dx;
+                            }
+                          : null,
+                      onHorizontalDragEnd: (_currentScale <= 1.05)
+                          ? (details) {
+                              final velocity = details.primaryVelocity ?? 0.0;
+                              // Swipe a sinistra -> foto successiva
+                              if (velocity < -150 || _dragDistance < -45) {
+                                _resetZoom();
+                                notifier.nextPhoto();
+                              }
+                              // Swipe a destra -> foto precedente
+                              else if (velocity > 150 || _dragDistance > 45) {
+                                _resetZoom();
+                                notifier.prevPhoto();
+                              }
+                              _dragDistance = 0.0;
+                            }
+                          : null,
+                      child: Center(
+                        child: _buildImageContent(state, cachedData),
+                      ),
+                    ),
+                  ),
+
+                  // Pop-up Centrale per Permessi Android (Sostituisce il vecchio MaterialBanner)
+                  if (!state.hasStoragePermission && !kIsWeb && Platform.isAndroid)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black54,
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: Card(
+                              color: const Color(0xFF242424),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 12,
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.folder_shared_rounded, color: Colors.amber, size: 48),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'Accesso ai File Richiesto',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Per visualizzare, selezionare e copiare i file RAW (.RAF, .DNG, .ARW, ecc.) sulla memoria interna o scheda SD, RAW Manager necessita dell\'autorizzazione per la gestione di tutti i file.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.45),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.amber,
+                                        foregroundColor: Colors.black,
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onPressed: () => notifier.requestStoragePermission(),
+                                      child: const Text('CONCEDI PERMESSO', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Per visualizzare, selezionare e copiare i file RAW (.RAF, .DNG, .ARW, ecc.) sulla memoria interna o scheda SD, RAW Manager necessita dell\'autorizzazione per la gestione di tutti i file.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.45),
-                              ),
-                              const SizedBox(height: 20),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.amber,
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                onPressed: () => notifier.requestStoragePermission(),
-                                child: const Text('CONCEDI PERMESSO', style: TextStyle(fontWeight: FontWeight.bold)),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ),
 
-            // Overlay HUD superiore (a scomparsa con H o tap)
-            if (state.isHudVisible)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: HudOverlay(
-                  currentPhoto: currentPhoto,
-                  extractedData: cachedData,
-                  onPickSource: _pickSourceFolder,
-                  onPickTarget: _pickTargetFolder,
-                ),
+                  // Barra di controllo Touch inferiore (visibile su Mobile/Tablet o se abilitata)
+                  if (state.isHudVisible)
+                    Positioned(
+                      bottom: 16,
+                      left: 16,
+                      right: 16,
+                      child: _buildBottomBar(context, state, notifier, isDesktop),
+                    ),
+                ],
               ),
-
-            // Barra di controllo Touch inferiore (visibile su Mobile/Tablet o se abilitata)
-            if (state.isHudVisible)
-              Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
-                child: _buildBottomBar(context, state, notifier, isDesktop),
-              ),
+            ),
           ],
         ),
       ),
@@ -348,6 +365,8 @@ class _CullerScreenState extends ConsumerState<CullerScreen> {
       transformationController: _transformationController,
       minScale: 1.0,
       maxScale: 4.0,
+      panEnabled: _currentScale > 1.05,
+      scaleEnabled: true,
       clipBehavior: Clip.none,
       child: Image.memory(
         cachedData.jpegBytes,
