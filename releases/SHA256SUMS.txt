@@ -1,0 +1,2 @@
+123d5034616c4fc41df18ec4cbea1cadd9439dc27ba8ef215c166940f2d4bf03  RAW_Manager_Android_arm64.apk
+4a29b6d1d502a466068ca34deb3e981a465d1f858323dfc3e3c917f71d4bcf9b  RAW_Manager_Ubuntu_x64_Bundle.tar.gz

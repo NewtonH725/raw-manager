@@ -1,0 +1,20 @@
+# RAW Manager .gitignore
+.tmp/
+.env
+credentials.json
+token.json
+build/
+.dart_tool/
+.packages
+pubspec.lock
+*.ipr
+*.iws
+*.iml
+.idea/
+.vscode/
+
+# Ignore compiled binary releases in git repo
+releases/*.apk
+releases/*.tar.gz
+releases/*.zip
+releases/RAW_Manager_Windows_x64/
