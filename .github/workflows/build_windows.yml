@@ -3,9 +3,10 @@ name: Build Windows Release
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
@@ -14,6 +15,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install pillow
+
+      - name: Generate synthetic test dataset
+        run: python execution/generate_test_rafs.py
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -43,3 +55,19 @@ jobs:
         with:
           name: RAW_Manager_Windows_x64
           path: releases/RAW_Manager_Windows_x64.zip
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0
+          name: "RAW Manager v1.0.0 (Windows x64)"
+          body: |
+            ## RAW Manager v1.0.0
+            Release ufficiale per Windows a 64-bit.
+            
+            ### Istruzioni per Windows:
+            1. Scarica ed estrai **`RAW_Manager_Windows_x64.zip`**.
+            2. Avvia **`raw_manager.exe`** per eseguire subito l'applicazione.
+          files: |
+            releases/RAW_Manager_Windows_x64.zip
