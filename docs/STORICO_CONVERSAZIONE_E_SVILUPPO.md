@@ -77,8 +77,17 @@ Questo documento raccoglie in ordine cronologico e tematico tutto lo storico del
   2. *"Nell'icona, centra meglio i petali del diaframma rispetto al cerchio. Al momento sono leggermente decentrati verso l'alto."*
 - **Implementazione:**
   - Creazione della cartella `docs/` con il manuale PDF illustrato `RAW_Manager_Guida_Ufficiale.pdf`, gli screenshot ad alta risoluzione e questo storico.
-  - Aggiornamento di `README.md` su GitHub e upload diretto del PDF nelle Releases v1.0.0.
+  - Aggiornamento di `README.md` su GitHub e upload diretto del PDF nelle Releases.
   - Analisi del descentramento dell'icona (`13.5px` verso l'alto dovuto alle metriche interne asimmetriche di Pillow `textbbox`) e riscrittura di `execution/generate_app_icon.py` con ritaglio esatto tramite bounding box sui pixel (`Image.getbbox()`) su oversampling 2048px, garantendo una centratura matematica sub-pixel su Android, Linux e Windows.
+
+### Fase 9: Repository Pubblico e Sistema di Auto-Aggiornamento in-App (v1.1.0)
+- **Richiesta Utente:** *"Sarebbe possibile creare una funzione che cerchi automaticamente una nuova versione all'avvio dell'app, collegata al repository di github, con pop-up e download automatico del file aggiornato? Opzione 1 (repository pubblico)."*
+- **Implementazione:**
+  - Cambio visibilità del repository GitHub `NewtonH725/raw-manager` a **Public** per consentire l'accesso nativo senza token all'endpoint ufficiale delle GitHub Releases.
+  - Creazione del servizio `lib/services/update_service.dart` per controllo asincrono all'avvio (`releases/latest` con timeout 4-5s per non bloccare l'uso offline sul campo), confronto SemVer e download progressivo mirato per OS (`.apk` su Android, `Setup.exe` su Windows, `.tar.gz` su Linux).
+  - Creazione del pop-up Material 3 `lib/ui/widgets/update_dialog.dart` con note di rilascio, confronto versioni e barra di avanzamento download.
+  - Supporto nativo Android in `MainActivity.kt` + `AndroidManifest.xml` (`INTERNET`, `REQUEST_INSTALL_PACKAGES`, `FileProvider`) per l'installazione diretta dell'APK scaricato; auto-chiusura e lancio Setup su Windows; aggiornamento automatico `~/.local/share/raw-manager/` su Linux.
+  - Pipeline CI dinamica collegata alla versione di `pubspec.yaml` (`1.1.0`).
 
 ---
 

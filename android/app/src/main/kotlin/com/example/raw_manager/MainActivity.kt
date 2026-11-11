@@ -6,9 +6,11 @@ import android.net.Uri
 import android.os.Build
 import android.provider.DocumentsContract
 import androidx.annotation.NonNull
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -133,6 +135,47 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }.start()
+                }
+
+                "getAppInfo" -> {
+                    try {
+                        val pInfo = packageManager.getPackageInfo(packageName, 0)
+                        val info = HashMap<String, String>()
+                        info["version"] = pInfo.versionName ?: "1.0.0"
+                        info["cacheDir"] = cacheDir.absolutePath
+                        result.success(info)
+                    } catch (e: Exception) {
+                        result.error("INFO_ERROR", e.message, null)
+                    }
+                }
+
+                "installApk" -> {
+                    val filePath = call.argument<String>("filePath")
+                    if (filePath == null) {
+                        result.error("INVALID_ARGUMENT", "filePath mancante", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val apkFile = File(filePath)
+                        if (!apkFile.exists()) {
+                            result.error("FILE_NOT_FOUND", "APK non trovato: $filePath", null)
+                            return@setMethodCallHandler
+                        }
+                        val apkUri = FileProvider.getUriForFile(
+                            this,
+                            "${applicationContext.packageName}.fileprovider",
+                            apkFile
+                        )
+                        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(apkUri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(installIntent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("INSTALL_ERROR", "Errore avvio installer APK: ${e.message}", null)
+                    }
                 }
 
                 else -> result.notImplemented()

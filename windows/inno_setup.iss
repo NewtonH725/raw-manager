@@ -1,6 +1,8 @@
 ; Inno Setup Script per RAW Manager (Windows x64)
 #define MyAppName "RAW Manager"
-#define MyAppVersion "1.0.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "1.1.0"
+#endif
 #define MyAppPublisher "NewtonH725"
 #define MyAppURL "https://github.com/NewtonH725/raw-manager"
 #define MyAppExeName "raw_manager.exe"

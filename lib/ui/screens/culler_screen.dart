@@ -6,8 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/culler_provider.dart';
 import '../../services/saf_service.dart';
+import '../../services/update_service.dart';
 import '../widgets/hud_overlay.dart';
 import '../widgets/info_dialog.dart';
+import '../widgets/update_dialog.dart';
 
 class CullerScreen extends ConsumerStatefulWidget {
   const CullerScreen({super.key});
@@ -26,6 +28,14 @@ class _CullerScreenState extends ConsumerState<CullerScreen> {
   void initState() {
     super.initState();
     _transformationController.addListener(_onTransformationChanged);
+    _checkForAppUpdate();
+  }
+
+  Future<void> _checkForAppUpdate() async {
+    final updateInfo = await UpdateService.checkForUpdates();
+    if (updateInfo != null && mounted) {
+      UpdateDialog.show(context, updateInfo);
+    }
   }
 
   void _onTransformationChanged() {

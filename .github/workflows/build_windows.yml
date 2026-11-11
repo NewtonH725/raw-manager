@@ -17,6 +17,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Extract App Version from pubspec.yaml
+        id: app_version
+        shell: pwsh
+        run: |
+          $line = (Get-Content pubspec.yaml | Select-String -Pattern '^version:\s*([^\s+]+)').Matches[0].Groups[1].Value
+          echo "version=$line" >> $env:GITHUB_OUTPUT
+          echo "tag=v$line" >> $env:GITHUB_OUTPUT
+          Write-Host "Versione rilevata: $line (Tag: v$line)"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -63,7 +72,7 @@ jobs:
             $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
           }
           Write-Host "Compilazione Setup con Inno Setup: $iscc"
-          & $iscc windows/inno_setup.iss
+          & $iscc "/DMyAppVersion=${{ steps.app_version.outputs.version }}" windows/inno_setup.iss
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
@@ -77,20 +86,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.0
-          name: "RAW Manager v1.0.0 (Windows x64 - Setup & Portable)"
+          tag_name: ${{ steps.app_version.outputs.tag }}
+          name: "RAW Manager ${{ steps.app_version.outputs.tag }} (Windows, Linux, Android)"
           body: |
-            ## RAW Manager v1.0.0 (Windows a 64-bit)
-            
-            Scegli la versione che preferisci:
-            
-            ### 1. Versione Installabile (Setup guidato con icona e menù Start)
-            - Scarica ed esegui **`RAW_Manager_Windows_x64_Setup.exe`**.
-            - Installa il programma in `Program Files`, crea automaticamente l'icona sul Desktop e nel Menù Start di Windows e include il disinstallatore pulito.
-            
-            ### 2. Versione Portable (senza installazione)
-            - Scarica ed estrai **`RAW_Manager_Windows_x64_Portable.zip`**.
-            - Apri la cartella estratta e fai doppio clic su **`raw_manager.exe`** per usarlo direttamente anche da chiavetta USB.
+            ## RAW Manager ${{ steps.app_version.outputs.tag }}
+
+            ### Novità di questa versione:
+            - **Auto-Updater Integrato:** Controllo automatico delle nuove release su GitHub all'avvio dell'app con pop-up Material 3 e download diretto in-app.
+            - **Icona Centrata con Precisione Sub-Pixel:** Petali del diaframma perfettamente centrati su Android Adaptive Icons, Linux e Windows.
+            - **Barra Superiore Fissa & Swipe Touch:** Nessuna sovrapposizione alle immagini e scorrimento touch laterale fluido.
+
+            ### Pacchetti disponibili:
+            - **Windows (Installabile):** Scarica ed esegui **`RAW_Manager_Windows_x64_Setup.exe`**
+            - **Windows (Portable):** Scarica ed estrai **`RAW_Manager_Windows_x64_Portable.zip`**
+            - **Android:** Scarica e installa **`RAW_Manager_Android_arm64.apk`**
+            - **Linux:** Scarica **`RAW_Manager_Ubuntu_x64_Bundle.tar.gz`**
           files: |
             releases/RAW_Manager_Windows_x64_Setup.exe
             releases/RAW_Manager_Windows_x64_Portable.zip
+            docs/RAW_Manager_Guida_Ufficiale.pdf

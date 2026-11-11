@@ -81,4 +81,31 @@ class SafService {
       return false;
     }
   }
+
+  /// Restituisce versione app installata e directory cache scrivibile su Android.
+  static Future<Map<String, String>?> getAppInfo() async {
+    if (!isAndroid) return null;
+    try {
+      final Map<dynamic, dynamic>? info = await _channel.invokeMethod('getAppInfo');
+      if (info == null) return null;
+      return info.map((k, v) => MapEntry(k.toString(), v.toString()));
+    } catch (e) {
+      debugPrint('Errore getAppInfo: $e');
+      return null;
+    }
+  }
+
+  /// Avvia l'installer nativo di Android per un file APK scaricato localmente.
+  static Future<bool> installApk(String filePath) async {
+    if (!isAndroid) return false;
+    try {
+      final bool? launched = await _channel.invokeMethod('installApk', {
+        'filePath': filePath,
+      });
+      return launched ?? false;
+    } catch (e) {
+      debugPrint('Errore installApk: $e');
+      return false;
+    }
+  }
 }

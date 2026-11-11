@@ -4,7 +4,7 @@
   <p><b>Culling fotografico ultra-reattivo (&lt;10ms) per Fujifilm RAF (X-T5) e formati RAW universali</b></p>
   
   <p>
-    <a href="https://github.com/NewtonH725/raw-manager/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/Release-v1.0.0-gold.svg?style=flat-square" alt="Release v1.0.0" /></a>
+    <a href="https://github.com/NewtonH725/raw-manager/releases/latest"><img src="https://img.shields.io/badge/Release-v1.1.0-gold.svg?style=flat-square" alt="Release v1.1.0" /></a>
     <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Android-blue.svg?style=flat-square" alt="Piattaforme" />
     <img src="https://img.shields.io/badge/Latency-%3C%206ms%20per%20frame-brightgreen.svg?style=flat-square" alt="Latenza" />
     <img src="https://img.shields.io/badge/Architecture-DOE%203--Tier-orange.svg?style=flat-square" alt="Architettura" />
@@ -18,6 +18,7 @@
 
 - **Estrazione Binaria ad Accesso Casuale (< 6 ms):** Legge direttamente i puntatori binari JPEG nell'header di 92 byte dei file Fujifilm `.RAF` (offset `0x54` e `0x58`), evitando di decodificare l'intera matrice RAW da 40 MP.
 - **Supporto RAW Universale:** Compatibile con `.RAF` (Fujifilm X-T5, X-H2, X-T4, ecc.), `.DNG` (Adobe), `.ARW` (Sony Alpha), `.NEF` (Nikon), `.CR2`/`.CR3` (Canon).
+- **Auto-Aggiornamento in-App (GitHub Releases):** Controlla automaticamente all'avvio se esistono nuove versioni e permette di scaricare e installare l'aggiornamento con un clic tramite pop-up Material 3.
 - **Finestra Scorrevole di Prefetching `[i-2, i+3]`:** Precarica in RAM le foto adiacenti in background: il passaggio tra uno scatto e l'altro è istantaneo, senza attese di I/O su disco.
 - **Copia Asincrona Non Bloccante:** La selezione (tasto `Spazio`) accoda la copia del file nella cartella *Target* e passa immediatamente alla foto successiva (*Auto-Advance*).
 - **Barra Superiore Material 3 Fissa:** I comandi e i metadati sono ancorati in cima allo schermo senza mai coprire la visualizzazione della foto.
@@ -42,14 +43,14 @@
 
 ## 📦 Download Eseguibili e Versioni (Releases)
 
-Tutte le versioni precompilate sono disponibili nella sezione [**GitHub Releases**](https://github.com/NewtonH725/raw-manager/releases/tag/v1.0.0):
+Tutte le versioni precompilate sono disponibili nella sezione [**GitHub Releases**](https://github.com/NewtonH725/raw-manager/releases/latest):
 
 | Piattaforma | Pacchetto | Tipo | Descrizione |
 | :--- | :--- | :--- | :--- |
-| **🪟 Windows (x64)** | [**`RAW_Manager_Windows_x64_Setup.exe`**](https://github.com/NewtonH725/raw-manager/releases/tag/v1.0.0) | Installer | Setup guidato Inno Setup, icona Desktop, Menù Start, disinstallatore pulito |
-| **🪟 Windows (x64)** | [**`RAW_Manager_Windows_x64_Portable.zip`**](https://github.com/NewtonH725/raw-manager/releases/tag/v1.0.0) | Portable | Eseguibile autonomo senza installazione, utilizzabile anche da chiavetta USB |
-| **📱 Android** | [**`RAW_Manager_Android_arm64.apk`**](https://github.com/NewtonH725/raw-manager/releases/tag/v1.0.0) | APK | Compatibile con Android 10..17, Adaptive Icons, supporto schede SD USB-C OTG |
-| **🐧 Linux** | [**`RAW_Manager_Ubuntu_x64_Bundle.tar.gz`**](https://github.com/NewtonH725/raw-manager/releases/tag/v1.0.0) | Bundle | Applicazione desktop nativa XDG con avvio istantaneo e lanciatore `.desktop` |
+| **🪟 Windows (x64)** | [**`RAW_Manager_Windows_x64_Setup.exe`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Installer | Setup guidato Inno Setup, icona Desktop, Menù Start, disinstallatore pulito |
+| **🪟 Windows (x64)** | [**`RAW_Manager_Windows_x64_Portable.zip`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Portable | Eseguibile autonomo senza installazione, utilizzabile anche da chiavetta USB |
+| **📱 Android** | [**`RAW_Manager_Android_arm64.apk`**](https://github.com/NewtonH725/raw-manager/releases/latest) | APK | Compatibile con Android 10..17, Adaptive Icons, supporto schede SD USB-C OTG |
+| **🐧 Linux** | [**`RAW_Manager_Ubuntu_x64_Bundle.tar.gz`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Bundle | Applicazione desktop nativa XDG con avvio istantaneo e lanciatore `.desktop` |
 | **📄 Documentazione** | [**`RAW_Manager_Guida_Ufficiale.pdf`**](docs/RAW_Manager_Guida_Ufficiale.pdf) | PDF | Manuale utente illustrato a colori di 6 pagine con flussi operativi completi |
 
 ---
