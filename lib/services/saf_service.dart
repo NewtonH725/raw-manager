@@ -108,4 +108,18 @@ class SafService {
       return false;
     }
   }
+
+  /// Estrae il riepilogo EXIF nativo (utile per DNG Ricoh la cui anteprima interna non contiene APP1 EXIF).
+  static Future<String?> extractExifSummary(String fileUri) async {
+    if (!isAndroid) return null;
+    try {
+      final String? summary = await _channel.invokeMethod('extractExifSummary', {
+        'uri': fileUri,
+      });
+      return summary;
+    } catch (e) {
+      debugPrint('Errore extractExifSummary SAF: $e');
+      return null;
+    }
+  }
 }

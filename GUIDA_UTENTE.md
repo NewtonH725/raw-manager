@@ -143,7 +143,7 @@ RAW Manager include un motore di scansione ed estrazione universale in grado di 
 * 🟠 **Sony (`.ARW`)**: Decodifica ad accesso diretto dell'anteprima TIFF/IFD.
 * 🟡 **Nikon (`.NEF`)**: Estrazione rapida del JPEG incorporato da struttura TIFF Nikon.
 * 🔴 **Canon (`.CR2` e `.CR3`)**: Supporto per standard TIFF CR2 e container moderno ISO-BMFF CR3.
-* 🔵 **Adobe / DNG Universale (`.DNG`)**: Compatibilità con qualsiasi file Digital Negative (inclusi droni DJI e smartphone).
+* 🔵 **Ricoh / Adobe / Leica (`.DNG`)**: Supporto completo per **Ricoh GR III / GR IIIx** (anteprime HD e metadati EXIF completi) e qualsiasi file Digital Negative (Leica, droni DJI e smartphone).
 * 🟣 **Altri formati**: Supporto per `.RW2` (Panasonic Lumix), `.ORF` (Olympus / OM System) e `.PEF` (Pentax).
 
 ---

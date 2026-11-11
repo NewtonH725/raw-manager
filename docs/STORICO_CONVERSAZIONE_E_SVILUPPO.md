@@ -99,7 +99,14 @@ Questo documento raccoglie in ordine cronologico e tematico tutto lo storico del
   - **Diagnostica e Fix Ricoh GR IIIx DNG (Dart + Kotlin):**
     - I DNG Ricoh GR IIIx salvano l'anteprima ad alta risoluzione (1620×1080) in `SubIFD1` tramite `StripOffsets` (`0x0111`) / `StripByteCounts` (`0x0117`) con `Compression = 7` e una thumbnail 160×120 separata, mentre i dati RAW del sensore usano **Lossless JPEG (`SOF3 = 0xFF 0xC3`)** che inizia anch'esso con `0xFF 0xD8`.
     - Aggiornati sia `lib/services/raf_extractor.dart` che `MainActivity.kt` per supportare `0x0111`/`0x0117`, attraversare sempre `nextIfdOffset` (`IFD1`), scartare fotometriche CFA/LinearRaw e verificare i marker `SOF0/SOF1/SOF2` 8-bit rigettando `SOF3` Lossless ed evitando troncamenti sulle thumbnail `APP1` annidate.
-  - **Nomi File Versionati:** tutti i pacchetti scaricabili (`RAW_Manager_v1.2.0_...`) espongono esplicitamente la versione della build.
+  - **Nomi File Versionati:** tutti i pacchetti scaricabili espongono esplicitamente la versione della build.
+
+### Fase 11: Estrazione Metadati EXIF DNG Ricoh GR IIIx & Badge Versione in-App (v1.2.1)
+- **Richiesta Utente:** *"Fai in modo che siano visibili i dati EXIF anche per i DNG di Ricoh, specifica Ricoh DNG al punto 4 del manuale di istruzioni e mostra la versione attuale nelle info in basso."*
+- **Implementazione:**
+  - **EXIF Ricoh DNG:** L'anteprima JPEG incorporata nei `.DNG` Ricoh GR IIIx spesso non contiene l'header `APP1 EXIF`. Implementato il fallback diretto sull'header TIFF/DNG sorgente via `readExifFromFile` (Linux/Windows) e tramite `android.media.ExifInterface(FileDescriptor)` su Android SAF (`MainActivity.kt`), con formattazione automatica dei rapporti razionali (es. `14/5` -> `f/2.8`, `261/10` -> `26.1mm`).
+  - **Manuale Punto 4:** Aggiunta specifica esplicita `Ricoh GR III, GR IIIx` nel punto 4 di `InfoDialog`, nelle guide Markdown e nel PDF ufficiale.
+  - **Indicatore Versione:** Inserito badge versione in basso nella finestra Info (`Versione v1.2.1`) e nella schermata di avvio.
 
 ---
 

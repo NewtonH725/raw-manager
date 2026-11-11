@@ -213,5 +213,68 @@ void main() {
       expect(resHeader.$2, 1620);
       expect(resHeader.$3, 1080);
     });
+
+    test('Legge metadati EXIF dall header DNG sorgente se la preview interna non li contiene', () async {
+      final barePreview = makeJpeg(sofMarker: 0xC0, width: 1620, height: 1080, payloadLen: 200);
+      final bd = BytesBuilder();
+      void addU16(int v) => bd.add([v & 0xFF, (v >> 8) & 0xFF]);
+      void addU32(int v) => bd.add([v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF]);
+      void addEntry(int tag, int type, int count, int val) {
+        addU16(tag);
+        addU16(type);
+        addU32(count);
+        addU32(val);
+      }
+
+      // 0..7: TIFF Header II
+      bd.add([0x49, 0x49]);
+      addU16(42);
+      addU32(8);
+
+      // IFD0 at 8: 5 entries -> 2 + 60 + 4 = 66 bytes -> ends at 74
+      const modelBytes = [0x52, 0x49, 0x43, 0x4F, 0x48, 0x20, 0x47, 0x52, 0x20, 0x49, 0x49, 0x49, 0x78, 0x00]; // "RICOH GR IIIx\0" (14 bytes)
+      const modelOffset = 74;
+      const exifIfdOffset = 90; // 4 entries: 2 + 48 + 4 = 54 bytes -> ends at 144
+      const expRatioOffset = 144; // 8 bytes
+      const fRatioOffset = 152;   // 8 bytes
+      const focRatioOffset = 160; // 8 bytes
+      const previewOffset = 170;
+
+      addU16(5);
+      addEntry(0x0110, 2, modelBytes.length, modelOffset); // Image Model
+      addEntry(0x0103, 3, 1, 7);                           // Compression 7
+      addEntry(0x0111, 4, 1, previewOffset);               // StripOffsets
+      addEntry(0x0117, 4, 1, barePreview.length);          // StripByteCounts
+      addEntry(0x8769, 4, 1, exifIfdOffset);               // ExifIFD
+      addU32(0);
+
+      bd.add(modelBytes); // 74..88
+      bd.add([0, 0]);     // pad to 90
+
+      // ExifIFD at 90
+      addU16(4);
+      addEntry(0x829A, 5, 1, expRatioOffset); // ExposureTime 1/250
+      addEntry(0x829D, 5, 1, fRatioOffset);   // FNumber 28/10
+      addEntry(0x8827, 3, 1, 200);            // ISOSpeedRatings 200
+      addEntry(0x920A, 5, 1, focRatioOffset); // FocalLength 261/10
+      addU32(0);
+
+      // Ratios (3 * 8 bytes = 24 bytes: 144..168)
+      addU32(1); addU32(250);
+      addU32(28); addU32(10);
+      addU32(261); addU32(10);
+      bd.add([0, 0]); // pad to 170
+      bd.add(barePreview);
+
+      final dngPath = p.join(syntheticDir, 'RICOH_GR3X_EXIF_TEST.DNG');
+      File(dngPath).writeAsBytesSync(bd.toBytes());
+
+      final extracted = await RafExtractor.extractRaf(dngPath);
+      expect(extracted.exifSummary, contains('RICOH GR IIIx'));
+      expect(extracted.exifSummary, contains('1/250s'));
+      expect(extracted.exifSummary, contains('f/2.8'));
+      expect(extracted.exifSummary, contains('ISO 200'));
+      expect(extracted.exifSummary, contains('26.1mm'));
+    });
   });
 }

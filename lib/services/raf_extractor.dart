@@ -92,7 +92,7 @@ class RafExtractor {
     if (filePathOrUri.startsWith('content://')) {
       final bytes = await SafService.extractRawBytes(filePathOrUri);
       if (bytes != null) {
-        return await _buildResult(bytes);
+        return await _buildResult(bytes, safUri: filePathOrUri);
       }
       throw const RawCorruptedException('Impossibile estrarre anteprima da URI SAF');
     }
@@ -222,7 +222,7 @@ class RafExtractor {
       }
 
       _validateJpegMarkers(jpegBytes);
-      return await _buildResult(jpegBytes);
+      return await _buildResult(jpegBytes, sourceFile: file);
     } finally {
       raf.closeSync();
     }
@@ -262,7 +262,7 @@ class RafExtractor {
           if (rawJpegBytes.length == best.length) {
             final cleaned = _trimAndValidateJpeg(rawJpegBytes);
             if (cleaned != null) {
-              return await _buildResult(cleaned);
+              return await _buildResult(cleaned, sourceFile: file);
             }
           }
         }
@@ -271,7 +271,7 @@ class RafExtractor {
       // 2. Fallback scanning intelligente (filtra Lossless SOF3 e gestisce APP1 EXIF annidati)
       final fallbackBytes = _scanForEmbeddedJpeg(raf, fileLength);
       if (fallbackBytes != null) {
-        return await _buildResult(fallbackBytes);
+        return await _buildResult(fallbackBytes, sourceFile: file);
       }
 
       throw const RawCorruptedException('Nessuna anteprima JPEG decodificabile trovata nel file RAW');
@@ -675,12 +675,34 @@ class RafExtractor {
     }
   }
 
-  static Future<ExtractedRafData> _buildResult(Uint8List jpegBytes) async {
+  static Future<ExtractedRafData> _buildResult(
+    Uint8List jpegBytes, {
+    File? sourceFile,
+    String? safUri,
+  }) async {
     Map<String, IfdTag> exifData = {};
-    String summary = '';
+    String summary = 'EXIF N/D';
     try {
-      exifData = await readExifFromBytes(jpegBytes);
+      exifData = await readExifFromBytes(jpegBytes, details: false);
       summary = _buildExifSummary(exifData);
+
+      // Nei DNG (es. Ricoh GR IIIx) l'anteprima JPEG interna non sempre contiene un blocco APP1 EXIF:
+      // se l'anteprima non ha metadati, leggiamo direttamente dall'header TIFF/DNG sorgente!
+      if (summary == 'EXIF N/D') {
+        if (sourceFile != null) {
+          final rawTags = await readExifFromFile(sourceFile, details: false);
+          final rawSummary = _buildExifSummary(rawTags);
+          if (rawSummary != 'EXIF N/D') {
+            exifData = rawTags;
+            summary = rawSummary;
+          }
+        } else if (safUri != null) {
+          final safSummary = await SafService.extractExifSummary(safUri);
+          if (safSummary != null && safSummary.isNotEmpty) {
+            summary = safSummary;
+          }
+        }
+      }
     } catch (_) {
       summary = 'EXIF N/D';
     }
@@ -692,21 +714,60 @@ class RafExtractor {
     );
   }
 
+  static String _formatRationalOrNumber(String raw, {bool asFractionIfLessThanOne = false}) {
+    final s = raw.trim();
+    if (s.isEmpty) return '';
+    if (s.contains('/')) {
+      final parts = s.split('/');
+      if (parts.length == 2) {
+        final num = double.tryParse(parts[0].trim());
+        final den = double.tryParse(parts[1].trim());
+        if (num != null && den != null && den != 0) {
+          final val = num / den;
+          if (asFractionIfLessThanOne && val < 1.0 && val > 0.0) {
+            final inv = (1.0 / val).round();
+            return '1/$inv';
+          }
+          if (val % 1.0 == 0) return val.toInt().toString();
+          return val.toStringAsFixed(1);
+        }
+      }
+    }
+    return s;
+  }
+
   static String _buildExifSummary(Map<String, IfdTag> tags) {
     if (tags.isEmpty) return 'EXIF N/D';
 
-    final camera = tags['Image Model']?.printable ?? tags['Image Make']?.printable ?? '';
-    final shutter = tags['EXIF ExposureTime']?.printable ?? '';
-    final fNumber = tags['EXIF FNumber']?.printable ?? '';
-    final iso = tags['EXIF ISOSpeedRatings']?.printable ?? tags['EXIF PhotographicSensitivity']?.printable ?? '';
-    final focal = tags['EXIF FocalLength']?.printable ?? '';
+    final camera = (tags['Image Model']?.printable ??
+            tags['Image UniqueCameraModel']?.printable ??
+            tags['Image Make']?.printable ??
+            '')
+        .trim();
+    final rawShutter =
+        (tags['EXIF ExposureTime']?.printable ?? tags['Image ExposureTime']?.printable ?? '').trim();
+    final rawFNumber =
+        (tags['EXIF FNumber']?.printable ?? tags['Image FNumber']?.printable ?? '').trim();
+    final iso = (tags['EXIF ISOSpeedRatings']?.printable ??
+            tags['EXIF PhotographicSensitivity']?.printable ??
+            tags['Image ISOSpeedRatings']?.printable ??
+            '')
+        .trim();
+    final rawFocal =
+        (tags['EXIF FocalLength']?.printable ?? tags['Image FocalLength']?.printable ?? '').trim();
 
     final parts = <String>[];
     if (camera.isNotEmpty) parts.add(camera);
-    if (shutter.isNotEmpty) parts.add('${shutter}s');
-    if (fNumber.isNotEmpty) parts.add('f/$fNumber');
+    if (rawShutter.isNotEmpty) {
+      parts.add('${_formatRationalOrNumber(rawShutter, asFractionIfLessThanOne: true)}s');
+    }
+    if (rawFNumber.isNotEmpty) {
+      parts.add('f/${_formatRationalOrNumber(rawFNumber)}');
+    }
     if (iso.isNotEmpty) parts.add('ISO $iso');
-    if (focal.isNotEmpty) parts.add('${focal}mm');
+    if (rawFocal.isNotEmpty) {
+      parts.add('${_formatRationalOrNumber(rawFocal)}mm');
+    }
 
     return parts.isEmpty ? 'EXIF N/D' : parts.join(' • ');
   }

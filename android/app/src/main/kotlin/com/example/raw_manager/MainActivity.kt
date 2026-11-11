@@ -178,6 +178,20 @@ class MainActivity : FlutterActivity() {
                     }
                 }
 
+                "extractExifSummary" -> {
+                    val fileUriStr = call.argument<String>("uri")
+                    if (fileUriStr == null) {
+                        result.error("INVALID_ARGUMENT", "uri non fornito", null)
+                        return@setMethodCallHandler
+                    }
+                    Thread {
+                        val summary = extractExifSummaryFromUri(Uri.parse(fileUriStr))
+                        runOnUiThread {
+                            result.success(summary)
+                        }
+                    }.start()
+                }
+
                 else -> result.notImplemented()
             }
         }
@@ -746,5 +760,84 @@ class MainActivity : FlutterActivity() {
         } ?: return false
 
         return true
+    }
+
+    private fun parseExifRationalOrDouble(raw: String?): Double? {
+        if (raw.isNullOrBlank()) return null
+        val s = raw.trim()
+        if (s.contains("/")) {
+            val parts = s.split("/")
+            if (parts.size == 2) {
+                val num = parts[0].trim().toDoubleOrNull()
+                val den = parts[1].trim().toDoubleOrNull()
+                if (num != null && den != null && den != 0.0) {
+                    return num / den
+                }
+            }
+        }
+        return s.toDoubleOrNull()
+    }
+
+    private fun extractExifSummaryFromUri(uri: Uri): String? {
+        return try {
+            val pfd = contentResolver.openFileDescriptor(uri, "r") ?: return null
+            pfd.use { parcelFd ->
+                val exif = android.media.ExifInterface(parcelFd.fileDescriptor)
+                val model = exif.getAttribute(android.media.ExifInterface.TAG_MODEL)?.trim()
+                    ?: exif.getAttribute(android.media.ExifInterface.TAG_MAKE)?.trim()
+                    ?: ""
+                val exposureStr = exif.getAttribute(android.media.ExifInterface.TAG_EXPOSURE_TIME)
+                val fNumberStr = exif.getAttribute(android.media.ExifInterface.TAG_F_NUMBER)
+                val isoStr = exif.getAttribute("PhotographicSensitivity")
+                    ?: exif.getAttribute("ISOSpeedRatings")
+                val focalStr = exif.getAttribute(android.media.ExifInterface.TAG_FOCAL_LENGTH)
+
+                val parts = ArrayList<String>()
+                if (model.isNotEmpty()) parts.add(model)
+
+                val expVal = parseExifRationalOrDouble(exposureStr)
+                if (expVal != null && expVal > 0.0) {
+                    if (expVal < 1.0) {
+                        val denom = Math.round(1.0 / expVal)
+                        parts.add("1/${denom}s")
+                    } else {
+                        val formatted = if (expVal % 1.0 == 0.0) {
+                            expVal.toInt().toString()
+                        } else {
+                            String.format(java.util.Locale.US, "%.1f", expVal)
+                        }
+                        parts.add("${formatted}s")
+                    }
+                }
+
+                val fVal = parseExifRationalOrDouble(fNumberStr)
+                if (fVal != null && fVal > 0.0) {
+                    val formatted = if (fVal % 1.0 == 0.0) {
+                        fVal.toInt().toString()
+                    } else {
+                        String.format(java.util.Locale.US, "%.1f", fVal)
+                    }
+                    parts.add("f/$formatted")
+                }
+
+                if (!isoStr.isNullOrBlank()) {
+                    parts.add("ISO ${isoStr.trim()}")
+                }
+
+                val focVal = parseExifRationalOrDouble(focalStr)
+                if (focVal != null && focVal > 0.0) {
+                    val formatted = if (focVal % 1.0 == 0.0) {
+                        focVal.toInt().toString()
+                    } else {
+                        String.format(java.util.Locale.US, "%.1f", focVal)
+                    }
+                    parts.add("${formatted}mm")
+                }
+
+                if (parts.isEmpty()) null else parts.joinToString(" • ")
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 }

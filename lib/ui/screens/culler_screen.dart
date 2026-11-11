@@ -361,6 +361,15 @@ class _CullerScreenState extends ConsumerState<CullerScreen> {
                   ),
                   onPressed: _pickSourceFolder,
                 ),
+                const SizedBox(height: 14),
+                Text(
+                  'v${UpdateService.appVersion}',
+                  style: const TextStyle(
+                    color: Colors.white24,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),

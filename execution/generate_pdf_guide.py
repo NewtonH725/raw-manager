@@ -209,13 +209,13 @@ def main():
     <img src="{img_logo}" class="cover-logo" alt="Logo">
     <div class="cover-title-group">
       <h1>RAW Manager</h1>
-      <div class="subtitle">Guida Utente e Manuale Operativo Ufficiale (v1.2.0)</div>
+      <div class="subtitle">Guida Utente e Manuale Operativo Ufficiale (v1.2.1)</div>
     </div>
   </div>
 
   <h2>1. Cos'è RAW Manager</h2>
   <p>
-    <b>RAW Manager</b> è un'applicazione fotografica multi-piattaforma concepita specificamente per il <b>culling ultra-rapido</b> dei file RAW (selezione, scarto e archiviazione istantanea sul campo). Sviluppata per fotografi esigenti che lavorano con fotocamere ad altissima risoluzione (come la <b>Fujifilm X-T5 da 40.2 MP</b>) o formati RAW universali (<b>.DNG, .ARW Sony, .NEF Nikon, .CR2/.CR3 Canon</b>).
+    <b>RAW Manager</b> è un'applicazione fotografica multi-piattaforma concepita specificamente per il <b>culling ultra-rapido</b> dei file RAW (selezione, scarto e archiviazione istantanea sul campo). Sviluppata per fotografi esigenti che lavorano con fotocamere ad altissima risoluzione (come la <b>Fujifilm X-T5 da 40.2 MP</b>) o formati RAW universali (<b>Ricoh GR III/GR IIIx .DNG, Adobe .DNG, .ARW Sony, .NEF Nikon, .CR2/.CR3 Canon</b>).
   </p>
 
   <div class="callout callout-success">

@@ -27,7 +27,7 @@ class UpdateInfo {
 
 class UpdateService {
   /// Deve rimanere allineata alla versione definita in pubspec.yaml (senza +build).
-  static const String appVersion = '1.2.0';
+  static const String appVersion = '1.2.1';
   static const String repoOwner = 'NewtonH725';
   static const String repoName = 'raw-manager';
   static const String latestReleaseEndpoint =

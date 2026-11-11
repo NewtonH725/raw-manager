@@ -109,7 +109,7 @@ class InfoDialog extends StatelessWidget {
                       content:
                           'Supporto universale ad accesso istantaneo:\n'
                           '• Fujifilm: .RAF (X-T5, X-H2, X-T4, ecc.)\n'
-                          '• Adobe: .DNG universale\n'
+                          '• Ricoh / Adobe / Leica: .DNG (Ricoh GR III, GR IIIx e DNG universale)\n'
                           '• Sony: .ARW (Alpha 7, Alpha 9, ecc.)\n'
                           '• Nikon: .NEF (Z6, Z7, Z8, D850, ecc.)\n'
                           '• Canon: .CR2 e .CR3 (EOS R, 5D, ecc.)\n'
@@ -133,18 +133,36 @@ class InfoDialog extends StatelessWidget {
               const Divider(color: Colors.white12),
               const SizedBox(height: 8),
 
-              // Footer button
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              // Footer con Versione e Pulsante di chiusura
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Text(
+                      'Versione v${UpdateService.appVersion}',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Ho Capito, Grazie!', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Ho Capito, Grazie!', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
             ],
           ),
