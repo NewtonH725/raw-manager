@@ -274,10 +274,13 @@ class _CullerScreenState extends ConsumerState<CullerScreen> {
                   // Barra di controllo Touch inferiore (visibile su Mobile/Tablet o se abilitata)
                   if (state.isHudVisible)
                     Positioned(
-                      bottom: 16,
-                      left: 16,
-                      right: 16,
-                      child: _buildBottomBar(context, state, notifier, isDesktop),
+                      bottom: 12,
+                      left: 12,
+                      right: 12,
+                      child: SafeArea(
+                        top: false,
+                        child: _buildBottomBar(context, state, notifier, isDesktop),
+                      ),
                     ),
                 ],
               ),
@@ -305,53 +308,62 @@ class _CullerScreenState extends ConsumerState<CullerScreen> {
 
     if (state.photos.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.photo_library_outlined, size: 72, color: Colors.white24),
-            const SizedBox(height: 16),
-            const Text(
-              'Nessun file RAW caricato',
-              style: TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Seleziona una cartella contenente file RAW (.RAF, .DNG, .ARW, .NEF, .CR2, ecc.) per iniziare il culling',
-              style: TextStyle(color: Colors.white38, fontSize: 14),
-            ),
-            if (state.statusMessage != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: Text(
-                  state.statusMessage!,
-                  style: TextStyle(
-                    color: state.statusMessage!.toLowerCase().contains('errore')
-                        ? Colors.redAccent
-                        : Colors.amber,
-                    fontSize: 13,
-                  ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Icon(Icons.photo_library_outlined, size: 72, color: Colors.white24),
+                const SizedBox(height: 16),
+                const Text(
+                  'Nessun file RAW caricato',
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-              ),
-            ],
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.folder_open),
-              label: const Text('Apri Cartella RAW'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              onPressed: _pickSourceFolder,
+                const SizedBox(height: 8),
+                const Text(
+                  'Seleziona una cartella contenente file RAW (.RAF, .DNG, .ARW, .NEF, .CR2, ecc.) per iniziare il culling',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white38, fontSize: 14, height: 1.4),
+                ),
+                if (state.statusMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Text(
+                      state.statusMessage!,
+                      style: TextStyle(
+                        color: state.statusMessage!.toLowerCase().contains('errore')
+                            ? Colors.redAccent
+                            : Colors.amber,
+                        fontSize: 13,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('Apri Cartella RAW'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  onPressed: _pickSourceFolder,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     }

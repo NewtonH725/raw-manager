@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/raf_photo.dart';
 import '../../providers/culler_provider.dart';
+import '../../services/file_operations_queue.dart';
 import '../../services/raf_extractor.dart';
 import 'info_dialog.dart';
 
@@ -10,6 +11,8 @@ class HudOverlay extends ConsumerWidget {
   final ExtractedRafData? extractedData;
   final VoidCallback onPickSource;
   final VoidCallback onPickTarget;
+
+  static const double compactBreakpoint = 720.0;
 
   const HudOverlay({
     super.key,
@@ -24,6 +27,7 @@ class HudOverlay extends ConsumerWidget {
     final state = ref.watch(cullerProvider);
     final notifier = ref.read(cullerProvider.notifier);
     final queue = ref.watch(fileOpsQueueProvider);
+    final isCompact = MediaQuery.sizeOf(context).width < compactBreakpoint;
 
     return Container(
       decoration: const BoxDecoration(
@@ -40,234 +44,433 @@ class HudOverlay extends ConsumerWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Riga Principale: Titolo, Badge Info, Contatori, File, Cartelle, Auto-Advance
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  // App Title, Logo & Contatore Foto
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.camera_rounded, color: Colors.amber, size: 24),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'RAW Manager',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Badge Classico Informazioni
-                      Tooltip(
-                        message: 'Guida e Informazioni (I / F1)',
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => InfoDialog.show(context),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.amber.withValues(alpha: 0.7), width: 1),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.info, color: Colors.amber, size: 14),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'INFO',
-                                    style: TextStyle(
-                                      color: Colors.amber,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      if (state.photos.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${state.currentIndex + 1} / ${state.photos.length}',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                    ],
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 12.0 : 16.0,
+            vertical: 8.0,
+          ),
+          child: isCompact
+              ? _buildCompactLayout(context, state, notifier, queue)
+              : _buildWideLayout(context, state, notifier, queue),
+        ),
+      ),
+    );
+  }
+
+  /// Layout per Smartphone (es. Google Pixel 9 Pro XL < 720dp):
+  /// griglia simmetrica e ordinata a righe fisse, senza spezzature casuali.
+  Widget _buildCompactLayout(
+    BuildContext context,
+    CullerState state,
+    CullerNotifier notifier,
+    FileOperationsQueue queue,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Riga 1: Logo + Titolo | INFO + Contatore
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.camera_rounded, color: Colors.amber, size: 22),
+                const SizedBox(width: 8),
+                const Text(
+                  'RAW Manager',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.4,
                   ),
-
-                  // Nome File Corrente & Badge Selezionata
-                  if (currentPhoto != null)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            currentPhoto!.fileName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        if (currentPhoto!.isCopied)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade800,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.check_circle, color: Colors.white, size: 14),
-                                SizedBox(width: 4),
-                                Text(
-                                  'SELEZIONATA ✓',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-
-                  // Cartelle Sorgente / Destinazione & Interruttore Auto-Advance
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      // Cartella Sorgente
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.folder_open, size: 16, color: Colors.white70),
-                        label: Text(
-                          state.sourcePath == null ? 'Apri Sorgente' : 'Sorgente',
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          side: const BorderSide(color: Colors.white24),
-                        ),
-                        onPressed: onPickSource,
-                      ),
-                      // Cartella Destinazione
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.drive_file_move_outline, size: 16, color: Colors.amber),
-                        label: Text(
-                          state.targetPath == null ? 'Seleziona Target' : 'Target',
-                          style: const TextStyle(color: Colors.amber, fontSize: 12),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          side: const BorderSide(color: Colors.amber),
-                        ),
-                        onPressed: onPickTarget,
-                      ),
-
-                      // Auto-Advance Switch
-                      Tooltip(
-                        message: 'Avanza automaticamente alla foto successiva dopo la selezione (Spazio)',
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Auto-Advance',
-                              style: TextStyle(color: Colors.white70, fontSize: 11),
-                            ),
-                            Transform.scale(
-                              scale: 0.75,
-                              child: Switch(
-                                value: state.autoAdvance,
-                                activeThumbColor: Colors.amber,
-                                onChanged: (_) => notifier.toggleAutoAdvance(),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildInfoBadge(context),
+                if (state.photos.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  _buildCounterChip(state),
                 ],
-              ),
+              ],
+            ),
+          ],
+        ),
 
-              // Riquadro Dati EXIF e Stato Coda I/O (mostrato subito sotto la riga comandi)
-              if (currentPhoto != null) ...[
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+        const SizedBox(height: 8),
+
+        // Riga 2: Tasti Sorgente, Target e Chip Auto-Advance allineati uniformemente
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.folder_open, size: 15, color: Colors.white70),
+                label: Text(
+                  state.sourcePath == null ? 'Apri Sorgente' : 'Sorgente',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  side: const BorderSide(color: Colors.white24),
+                ),
+                onPressed: onPickSource,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.drive_file_move_outline, size: 15, color: Colors.amber),
+                label: Text(
+                  state.targetPath == null ? 'Target' : 'Target ✓',
+                  style: const TextStyle(color: Colors.amber, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  side: const BorderSide(color: Colors.amber),
+                ),
+                onPressed: onPickTarget,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _buildCompactAutoAdvanceChip(state, notifier),
+          ],
+        ),
+
+        // Riga 3 (solo con foto caricata): Nome file, badge selezionata ed EXIF compatto
+        if (currentPhoto != null) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: Row(
                   children: [
-                    if (extractedData != null && extractedData!.exifSummary.isNotEmpty)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.info_outline, color: Colors.white60, size: 14),
-                          const SizedBox(width: 6),
-                          Text(
-                            extractedData!.exifSummary,
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
-                        ],
+                    Flexible(
+                      child: Text(
+                        currentPhoto!.fileName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    if (queue.pendingCount > 0 || queue.isProcessing)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Coda I/O: ${queue.pendingCount + (queue.isProcessing ? 1 : 0)} in corso',
-                            style: const TextStyle(color: Colors.amber, fontSize: 12),
-                          ),
-                        ],
-                      ),
+                    ),
+                    if (currentPhoto!.isCopied) ...[
+                      const SizedBox(width: 6),
+                      _buildSelectedBadge(compact: true),
+                    ],
                   ],
+                ),
+              ),
+              if (extractedData != null && extractedData!.exifSummary.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    extractedData!.exifSummary,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(color: Colors.white60, fontSize: 11),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ],
           ),
+          if (queue.pendingCount > 0 || queue.isProcessing) ...[
+            const SizedBox(height: 4),
+            _buildQueueIndicator(queue),
+          ],
+        ],
+      ],
+    );
+  }
+
+  /// Layout per Tablet grandi (Samsung Galaxy Tab S10 Ultra) e Desktop (>= 720dp)
+  Widget _buildWideLayout(
+    BuildContext context,
+    CullerState state,
+    CullerNotifier notifier,
+    FileOperationsQueue queue,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            // App Title, Logo & Contatore Foto
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.camera_rounded, color: Colors.amber, size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  'RAW Manager',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _buildInfoBadge(context),
+                const SizedBox(width: 12),
+                if (state.photos.isNotEmpty) _buildCounterChip(state),
+              ],
+            ),
+
+            // Nome File Corrente & Badge Selezionata
+            if (currentPhoto != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      currentPhoto!.fileName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  if (currentPhoto!.isCopied) _buildSelectedBadge(compact: false),
+                ],
+              ),
+
+            // Cartelle Sorgente / Destinazione & Interruttore Auto-Advance
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.folder_open, size: 16, color: Colors.white70),
+                  label: Text(
+                    state.sourcePath == null ? 'Apri Sorgente' : 'Sorgente',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    side: const BorderSide(color: Colors.white24),
+                  ),
+                  onPressed: onPickSource,
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.drive_file_move_outline, size: 16, color: Colors.amber),
+                  label: Text(
+                    state.targetPath == null ? 'Seleziona Target' : 'Target',
+                    style: const TextStyle(color: Colors.amber, fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    side: const BorderSide(color: Colors.amber),
+                  ),
+                  onPressed: onPickTarget,
+                ),
+                Tooltip(
+                  message: 'Avanza automaticamente alla foto successiva dopo la selezione (Spazio)',
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Auto-Advance',
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                      Transform.scale(
+                        scale: 0.75,
+                        child: Switch(
+                          value: state.autoAdvance,
+                          activeThumbColor: Colors.amber,
+                          onChanged: (_) => notifier.toggleAutoAdvance(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // Riquadro Dati EXIF e Stato Coda I/O
+        if (currentPhoto != null) ...[
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (extractedData != null && extractedData!.exifSummary.isNotEmpty)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.white60, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      extractedData!.exifSummary,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              if (queue.pendingCount > 0 || queue.isProcessing) _buildQueueIndicator(queue),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildInfoBadge(BuildContext context) {
+    return Tooltip(
+      message: 'Guida e Informazioni (I / F1)',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => InfoDialog.show(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.7), width: 1),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.info, color: Colors.amber, size: 14),
+                SizedBox(width: 4),
+                Text(
+                  'INFO',
+                  style: TextStyle(
+                    color: Colors.amber,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCounterChip(CullerState state) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '${state.currentIndex + 1} / ${state.photos.length}',
+        style: const TextStyle(
+          color: Colors.white70,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedBadge({required bool compact}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.green.shade800,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_circle, color: Colors.white, size: 13),
+          const SizedBox(width: 4),
+          Text(
+            compact ? 'COPIATA' : 'SELEZIONATA ✓',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactAutoAdvanceChip(CullerState state, CullerNotifier notifier) {
+    final active = state.autoAdvance;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: notifier.toggleAutoAdvance,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: active ? Colors.amber.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: active ? Colors.amber : Colors.white24,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                active ? Icons.bolt_rounded : Icons.pause_circle_outline,
+                color: active ? Colors.amber : Colors.white54,
+                size: 15,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Auto',
+                style: TextStyle(
+                  color: active ? Colors.amber : Colors.white60,
+                  fontSize: 12,
+                  fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQueueIndicator(FileOperationsQueue queue) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'Coda I/O: ${queue.pendingCount + (queue.isProcessing ? 1 : 0)} in corso',
+          style: const TextStyle(color: Colors.amber, fontSize: 12),
+        ),
+      ],
     );
   }
 }

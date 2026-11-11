@@ -1,7 +1,7 @@
 ; Inno Setup Script per RAW Manager (Windows x64)
 #define MyAppName "RAW Manager"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.0"
+  #define MyAppVersion "1.2.0"
 #endif
 #define MyAppPublisher "NewtonH725"
 #define MyAppURL "https://github.com/NewtonH725/raw-manager"
@@ -20,7 +20,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=
 OutputDir=..\releases
-OutputBaseFilename=RAW_Manager_Windows_x64_Setup
+OutputBaseFilename=RAW_Manager_v{#MyAppVersion}_Windows_x64_Setup
 SetupIconFile=runner\resources\app_icon.ico
 Compression=lzma2/ultra64
 SolidCompression=yes

@@ -301,45 +301,93 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-            // 2. Estrazione diretta IFD/TIFF per DNG, ARW, NEF, CR2 (< 10ms)
+            // 2. Estrazione diretta IFD/TIFF per DNG (Ricoh GR IIIx, Adobe), ARW, NEF, CR2 (< 10ms)
             val tiffBytes = extractTiffJpeg(fileChannel, fileSize)
             if (tiffBytes != null) {
                 return tiffBytes
             }
 
-            // 3. Fallback di scansione per altri formati RAW nei primi blocchi
-            val scanLimit = minOf(fileSize, 25L * 1024 * 1024).toInt()
-            val scanBuffer = ByteBuffer.allocate(scanLimit)
-            fileChannel.position(0)
-            fileChannel.readFully(scanBuffer)
-            val rawBytes = scanBuffer.array()
+            // 3. Fallback avanzato di scansione (esclude Lossless SOF3 e gestisce APP1 EXIF annidati)
+            return scanForEmbeddedJpeg(fileChannel, fileSize)
+        }
+    }
 
-            var bestStart = -1
-            var bestLength = 0
+    private data class JpegHeaderInfo(val isDecodable: Boolean, val width: Int, val height: Int)
+    private data class JpegCandidate(val offset: Long, val length: Int, val width: Int, val height: Int) {
+        val pixelArea: Long get() = width.toLong() * height.toLong()
+        fun isBetterThan(other: JpegCandidate?): Boolean {
+            if (other == null) return true
+            if (pixelArea > 0 && other.pixelArea > 0 && pixelArea != other.pixelArea) {
+                return pixelArea > other.pixelArea
+            }
+            return length > other.length
+        }
+    }
 
-            for (i in 0 until scanLimit - 1) {
-                if (rawBytes[i] == 0xFF.toByte() && rawBytes[i + 1] == 0xD8.toByte()) {
-                    for (j in i + 50 until scanLimit - 1) {
-                        if (rawBytes[j] == 0xFF.toByte() && rawBytes[j + 1] == 0xD9.toByte()) {
-                            val len = j - i + 2
-                            if (len > bestLength && len > 50) {
-                                bestStart = i
-                                bestLength = len
-                            }
-                            break
-                        }
+    private fun inspectJpegHeader(bytes: ByteArray, length: Int = bytes.size): JpegHeaderInfo {
+        if (length < 10 || bytes[0] != 0xFF.toByte() || bytes[1] != 0xD8.toByte() || bytes[2] != 0xFF.toByte()) {
+            return JpegHeaderInfo(false, 0, 0)
+        }
+        var pos = 2
+        while (pos + 3 < length) {
+            if (bytes[pos] != 0xFF.toByte()) {
+                pos++
+                continue
+            }
+            while (pos < length && bytes[pos] == 0xFF.toByte()) {
+                pos++
+            }
+            if (pos >= length) break
+            val marker = bytes[pos].toInt() and 0xFF
+            pos++
+
+            if (marker == 0x00 || marker == 0x01 || (marker in 0xD0..0xD9)) {
+                if (marker == 0xD9) break
+                continue
+            }
+            if (pos + 1 >= length) break
+            val segLen = ((bytes[pos].toInt() and 0xFF) shl 8) or (bytes[pos + 1].toInt() and 0xFF)
+            if (segLen < 2) break
+
+            if (marker == 0xC0 || marker == 0xC1 || marker == 0xC2) {
+                var w = 0
+                var h = 0
+                if (pos + 7 < length) {
+                    val precision = bytes[pos + 2].toInt() and 0xFF
+                    h = ((bytes[pos + 3].toInt() and 0xFF) shl 8) or (bytes[pos + 4].toInt() and 0xFF)
+                    w = ((bytes[pos + 5].toInt() and 0xFF) shl 8) or (bytes[pos + 6].toInt() and 0xFF)
+                    val components = bytes[pos + 7].toInt() and 0xFF
+                    if (precision != 8 || w <= 0 || h <= 0 || (components != 1 && components != 3)) {
+                        return JpegHeaderInfo(false, 0, 0)
                     }
                 }
+                return JpegHeaderInfo(true, w, h)
             }
 
-            if (bestStart >= 0 && bestLength > 0) {
-                val resultBytes = ByteArray(bestLength)
-                System.arraycopy(rawBytes, bestStart, resultBytes, 0, bestLength)
-                return resultBytes
+            if (marker == 0xC3 || marker == 0xC5 || marker == 0xC6 || marker == 0xC7 ||
+                marker == 0xC9 || marker == 0xCA || marker == 0xCB ||
+                marker == 0xCD || marker == 0xCE || marker == 0xCF) {
+                return JpegHeaderInfo(false, 0, 0)
             }
 
-            null
+            if (marker == 0xDA) break
+            pos += segLen
         }
+        return JpegHeaderInfo(false, 0, 0)
+    }
+
+    private fun trimAndValidateJpeg(bytes: ByteArray): ByteArray? {
+        if (bytes.size < 4 || bytes[0] != 0xFF.toByte() || bytes[1] != 0xD8.toByte()) return null
+        if (bytes[bytes.size - 2] == 0xFF.toByte() && bytes[bytes.size - 1] == 0xD9.toByte()) {
+            return bytes
+        }
+        val searchStart = maxOf(2, bytes.size - 66)
+        for (i in bytes.size - 2 downTo searchStart) {
+            if (bytes[i] == 0xFF.toByte() && bytes[i + 1] == 0xD9.toByte()) {
+                return bytes.copyOfRange(0, i + 2)
+            }
+        }
+        return null
     }
 
     private fun extractTiffJpeg(channel: java.nio.channels.FileChannel, fileSize: Long): ByteArray? {
@@ -362,20 +410,96 @@ class MainActivity : FlutterActivity() {
             if (magic != 42 && magic != 0x4F52) return null
 
             val ifdOffset = tiffHeader.int.toLong() and 0xFFFFFFFFL
-            return findTiffPreview(channel, ifdOffset, endian, fileSize, 0)
+            val visitedIfds = HashSet<Long>()
+            val best = findBestTiffPreview(channel, ifdOffset, endian, fileSize, visitedIfds, 0) ?: return null
+
+            val buf = ByteBuffer.allocate(best.length)
+            channel.position(best.offset)
+            channel.readFully(buf)
+            return trimAndValidateJpeg(buf.array())
         } catch (e: Exception) {
             return null
         }
     }
 
-    private fun findTiffPreview(
+    private fun readTiffIntValues(
+        channel: java.nio.channels.FileChannel,
+        type: Int,
+        count: Long,
+        rawValOffsetBytes: ByteArray,
+        endian: ByteOrder,
+        fileSize: Long
+    ): List<Long> {
+        if (count <= 0L || count > 200L) return emptyList()
+        val bb = ByteBuffer.wrap(rawValOffsetBytes).order(endian)
+
+        if (count == 1L) {
+            return if (type == 3) {
+                listOf((bb.short.toInt() and 0xFFFF).toLong())
+            } else {
+                listOf(bb.int.toLong() and 0xFFFFFFFFL)
+            }
+        }
+        if (count == 2L && type == 3) {
+            val v1 = (bb.short.toInt() and 0xFFFF).toLong()
+            val v2 = (bb.short.toInt() and 0xFFFF).toLong()
+            return listOf(v1, v2)
+        }
+
+        val valOffset = bb.int.toLong() and 0xFFFFFFFFL
+        val elemSize = if (type == 3) 2 else 4
+        if (valOffset <= 0L || valOffset + count * elemSize > fileSize) return emptyList()
+
+        return try {
+            val dataBuf = ByteBuffer.allocate((count * elemSize).toInt()).order(endian)
+            channel.position(valOffset)
+            channel.readFully(dataBuf)
+            dataBuf.flip()
+            val out = ArrayList<Long>(count.toInt())
+            for (i in 0 until count.toInt()) {
+                if (type == 3) {
+                    out.add((dataBuf.short.toInt() and 0xFFFF).toLong())
+                } else {
+                    out.add(dataBuf.int.toLong() and 0xFFFFFFFFL)
+                }
+            }
+            out
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun validateTiffCandidate(
+        channel: java.nio.channels.FileChannel,
+        offset: Long,
+        length: Int,
+        fileSize: Long
+    ): JpegCandidate? {
+        if (offset < 8L || length <= 50 || offset + length > fileSize) return null
+        return try {
+            val probeLen = minOf(length, 65536)
+            val probeBuf = ByteBuffer.allocate(probeLen)
+            channel.position(offset)
+            channel.readFully(probeBuf)
+            val probe = probeBuf.array()
+            val header = inspectJpegHeader(probe, probeLen)
+            if (!header.isDecodable) return null
+            JpegCandidate(offset, length, header.width, header.height)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun findBestTiffPreview(
         channel: java.nio.channels.FileChannel,
         ifdOffset: Long,
         endian: ByteOrder,
         fileSize: Long,
+        visitedIfds: HashSet<Long>,
         depth: Int
-    ): ByteArray? {
-        if (depth > 4 || ifdOffset <= 0 || ifdOffset >= fileSize - 6) return null
+    ): JpegCandidate? {
+        if (depth > 8 || ifdOffset <= 0L || ifdOffset >= fileSize - 6) return null
+        if (!visitedIfds.add(ifdOffset)) return null
 
         try {
             val countBuf = ByteBuffer.allocate(2).order(endian)
@@ -384,64 +508,225 @@ class MainActivity : FlutterActivity() {
             countBuf.flip()
 
             val numEntries = countBuf.short.toInt() and 0xFFFF
-            if (numEntries <= 0 || numEntries > 500) return null
+            if (numEntries <= 0 || numEntries > 1000) return null
 
             val entriesBuf = ByteBuffer.allocate(numEntries * 12).order(endian)
             channel.position(ifdOffset + 2)
             channel.readFully(entriesBuf)
             entriesBuf.flip()
 
-            var jpegOffset: Long = -1
-            var jpegLength: Int = -1
-            val subIfds = ArrayList<Long>()
+            val nextIfdPtrPos = ifdOffset + 2L + numEntries * 12L
+            var nextIfdOffset = 0L
+            if (nextIfdPtrPos + 4 <= fileSize) {
+                val nextBuf = ByteBuffer.allocate(4).order(endian)
+                channel.position(nextIfdPtrPos)
+                channel.readFully(nextBuf)
+                nextBuf.flip()
+                nextIfdOffset = nextBuf.int.toLong() and 0xFFFFFFFFL
+            }
+
+            var jpegInterchangeOffset = -1L
+            var jpegInterchangeLength = -1
+            var stripOffsets: List<Long> = emptyList()
+            var stripByteCounts: List<Long> = emptyList()
+            var compression = 0
+            var photometric = -1
+            var bitsPerSample = 8
+            var hasJpegTables = false
+            val childIfds = ArrayList<Long>()
 
             for (i in 0 until numEntries) {
-                val tag = entriesBuf.getShort().toInt() and 0xFFFF
-                val type = entriesBuf.getShort().toInt() and 0xFFFF
-                val count = entriesBuf.getInt().toLong() and 0xFFFFFFFFL
-                val valOffset = entriesBuf.getInt().toLong() and 0xFFFFFFFFL
+                val tag = entriesBuf.short.toInt() and 0xFFFF
+                val type = entriesBuf.short.toInt() and 0xFFFF
+                val count = entriesBuf.int.toLong() and 0xFFFFFFFFL
+                val rawField = ByteArray(4)
+                entriesBuf.get(rawField)
+                val valOffset = ByteBuffer.wrap(rawField).order(endian).int.toLong() and 0xFFFFFFFFL
 
                 when (tag) {
-                    0x0201 -> jpegOffset = valOffset
-                    0x0202 -> jpegLength = valOffset.toInt()
-                    0x014A -> {
-                        if (count == 1L) {
-                            subIfds.add(valOffset)
-                        } else if (count in 2L..10L) {
-                            val subBuf = ByteBuffer.allocate((count * 4).toInt()).order(endian)
-                            channel.position(valOffset)
-                            channel.readFully(subBuf)
-                            subBuf.flip()
-                            for (j in 0 until count.toInt()) {
-                                subIfds.add(subBuf.getInt().toLong() and 0xFFFFFFFFL)
-                            }
+                    0x0102 -> {
+                        val vals = readTiffIntValues(channel, type, count, rawField, endian, fileSize)
+                        if (vals.isNotEmpty()) bitsPerSample = vals[0].toInt()
+                    }
+                    0x0103 -> {
+                        val vals = readTiffIntValues(channel, type, count, rawField, endian, fileSize)
+                        if (vals.isNotEmpty()) compression = vals[0].toInt()
+                    }
+                    0x0106 -> {
+                        val vals = readTiffIntValues(channel, type, count, rawField, endian, fileSize)
+                        if (vals.isNotEmpty()) photometric = vals[0].toInt()
+                    }
+                    0x0111 -> stripOffsets = readTiffIntValues(channel, type, count, rawField, endian, fileSize)
+                    0x0117 -> stripByteCounts = readTiffIntValues(channel, type, count, rawField, endian, fileSize)
+                    0x015B -> hasJpegTables = true
+                    0x0201 -> jpegInterchangeOffset = valOffset
+                    0x0202 -> jpegInterchangeLength = valOffset.toInt()
+                    0x014A -> childIfds.addAll(readTiffIntValues(channel, type, count, rawField, endian, fileSize))
+                    0x8769 -> if (valOffset in 1 until fileSize) childIfds.add(valOffset)
+                }
+            }
+
+            var best: JpegCandidate? = null
+            val isRawSensorData = bitsPerSample > 8 || photometric == 32803 || photometric == 34892
+
+            if (!isRawSensorData && jpegInterchangeOffset > 0 && jpegInterchangeLength > 50) {
+                val cand = validateTiffCandidate(channel, jpegInterchangeOffset, jpegInterchangeLength, fileSize)
+                if (cand != null && cand.isBetterThan(best)) best = cand
+            }
+
+            if (!isRawSensorData && (compression == 6 || compression == 7 || compression == 0) &&
+                stripOffsets.isNotEmpty() && stripByteCounts.isNotEmpty()) {
+                if (stripOffsets.size == 1) {
+                    val cand = validateTiffCandidate(channel, stripOffsets[0], stripByteCounts[0].toInt(), fileSize)
+                    if (cand != null && cand.isBetterThan(best)) best = cand
+                } else if (!hasJpegTables && stripOffsets.size == stripByteCounts.size) {
+                    var contiguous = true
+                    var totalLen = stripByteCounts[0]
+                    for (s in 1 until stripOffsets.size) {
+                        if (stripOffsets[s] != stripOffsets[s - 1] + stripByteCounts[s - 1]) {
+                            contiguous = false
+                            break
                         }
+                        totalLen += stripByteCounts[s]
+                    }
+                    if (contiguous && totalLen <= Int.MAX_VALUE) {
+                        val cand = validateTiffCandidate(channel, stripOffsets[0], totalLen.toInt(), fileSize)
+                        if (cand != null && cand.isBetterThan(best)) best = cand
                     }
                 }
             }
 
-            var bestBytes: ByteArray? = null
-            if (jpegOffset in 8 until fileSize && jpegLength > 50 && (jpegOffset + jpegLength) <= fileSize) {
-                val buf = ByteBuffer.allocate(jpegLength)
-                channel.position(jpegOffset)
-                channel.readFully(buf)
-                val bytes = buf.array()
-                if (bytes.size >= 4 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte()) {
-                    bestBytes = bytes
-                }
+            for (child in childIfds) {
+                val subCand = findBestTiffPreview(channel, child, endian, fileSize, visitedIfds, depth + 1)
+                if (subCand != null && subCand.isBetterThan(best)) best = subCand
             }
 
-            for (sub in subIfds) {
-                val subResult = findTiffPreview(channel, sub, endian, fileSize, depth + 1)
-                if (subResult != null && (bestBytes == null || subResult.size > bestBytes.size)) {
-                    bestBytes = subResult
-                }
+            if (nextIfdOffset > 0) {
+                val nextCand = findBestTiffPreview(channel, nextIfdOffset, endian, fileSize, visitedIfds, depth + 1)
+                if (nextCand != null && nextCand.isBetterThan(best)) best = nextCand
             }
 
-            return bestBytes
+            return best
         } catch (e: Exception) {
             return null
         }
+    }
+
+    private fun scanForEmbeddedJpeg(channel: java.nio.channels.FileChannel, fileSize: Long): ByteArray? {
+        val headLimit = minOf(fileSize, 25L * 1024 * 1024).toInt()
+        val headBuf = ByteBuffer.allocate(headLimit)
+        channel.position(0)
+        channel.readFully(headBuf)
+        var best = scanBufferForBestJpeg(headBuf.array())
+
+        val tailLimit = 20L * 1024 * 1024
+        if (fileSize > headLimit && (best == null || best.second * best.third < 320 * 240)) {
+            val tailStart = maxOf(0L, fileSize - tailLimit)
+            val tailSize = (fileSize - tailStart).toInt()
+            val tailBuf = ByteBuffer.allocate(tailSize)
+            channel.position(tailStart)
+            channel.readFully(tailBuf)
+            val tailBest = scanBufferForBestJpeg(tailBuf.array())
+            if (tailBest != null && (best == null || tailBest.second * tailBest.third > best.second * best.third)) {
+                best = tailBest
+            }
+        }
+        return best?.first
+    }
+
+    private fun scanBufferForBestJpeg(buf: ByteArray): Triple<ByteArray, Int, Int>? {
+        var bestStart = -1
+        var bestEnd = -1
+        var bestArea = -1
+        var bestLen = 0
+        var bestW = 0
+        var bestH = 0
+
+        var i = 0
+        while (i < buf.size - 10) {
+            if (buf[i] == 0xFF.toByte() && buf[i + 1] == 0xD8.toByte() && buf[i + 2] == 0xFF.toByte()) {
+                val parsed = measureJpegStream(buf, i)
+                if (parsed != null) {
+                    val (endOffset, w, h) = parsed
+                    val len = endOffset - i
+                    val area = w * h
+                    if (len > 50 && ((area > 0 && area > bestArea) || (area == bestArea && len > bestLen))) {
+                        bestStart = i
+                        bestEnd = endOffset
+                        bestArea = area
+                        bestLen = len
+                        bestW = w
+                        bestH = h
+                    }
+                    i = endOffset
+                    continue
+                }
+            }
+            i++
+        }
+
+        return if (bestStart >= 0 && bestEnd > bestStart) {
+            Triple(buf.copyOfRange(bestStart, bestEnd), bestW, bestH)
+        } else null
+    }
+
+    private fun measureJpegStream(buf: ByteArray, startPos: Int): Triple<Int, Int, Int>? {
+        var pos = startPos + 2
+        val limit = buf.size
+        var decodableSof = false
+        var width = 0
+        var height = 0
+        var seenSos = false
+
+        while (pos + 1 < limit) {
+            if (!seenSos) {
+                if (buf[pos] != 0xFF.toByte()) return null
+                while (pos < limit && buf[pos] == 0xFF.toByte()) pos++
+                if (pos >= limit) return null
+                val marker = buf[pos].toInt() and 0xFF
+                pos++
+
+                if (marker == 0xD9) return if (decodableSof) Triple(pos, width, height) else null
+                if (marker == 0x00 || marker == 0x01 || marker in 0xD0..0xD8) continue
+                if (pos + 1 >= limit) return null
+                val segLen = ((buf[pos].toInt() and 0xFF) shl 8) or (buf[pos + 1].toInt() and 0xFF)
+                if (segLen < 2 || pos + segLen > limit) return null
+
+                if (marker == 0xC0 || marker == 0xC1 || marker == 0xC2) {
+                    decodableSof = true
+                    if (pos + 7 < limit) {
+                        val precision = buf[pos + 2].toInt() and 0xFF
+                        height = ((buf[pos + 3].toInt() and 0xFF) shl 8) or (buf[pos + 4].toInt() and 0xFF)
+                        width = ((buf[pos + 5].toInt() and 0xFF) shl 8) or (buf[pos + 6].toInt() and 0xFF)
+                        val components = buf[pos + 7].toInt() and 0xFF
+                        if (precision != 8 || width <= 0 || height <= 0 || (components != 1 && components != 3)) return null
+                    }
+                } else if (marker == 0xC3 || marker == 0xC5 || marker == 0xC6 || marker == 0xC7 ||
+                    marker == 0xC9 || marker == 0xCA || marker == 0xCB ||
+                    marker == 0xCD || marker == 0xCE || marker == 0xCF) {
+                    return null
+                }
+
+                pos += segLen
+                if (marker == 0xDA) {
+                    if (!decodableSof) return null
+                    seenSos = true
+                }
+            } else {
+                if (buf[pos] == 0xFF.toByte()) {
+                    val next = buf[pos + 1].toInt() and 0xFF
+                    if (next == 0xD9) return Triple(pos + 2, width, height)
+                    if (next == 0x00 || (next in 0xD0..0xD7) || next == 0xFF) {
+                        pos += if (next == 0xFF) 1 else 2
+                        continue
+                    }
+                    pos += 2
+                    continue
+                }
+                pos++
+            }
+        }
+        return null
     }
 
     private fun copyDocument(sourceUri: Uri, targetTreeUri: Uri, fileName: String): Boolean {

@@ -8,6 +8,7 @@ crea gli archivi in releases/ e genera il manifesto SHA256SUMS.txt.
 import hashlib
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 RELEASES_DIR = BASE_DIR / "releases"
 REPORTS_DIR = BASE_DIR / ".tmp" / "qa_reports"
 BUILD_REPORT = REPORTS_DIR / "build_report.txt"
+
+def get_app_version() -> str:
+    pubspec = BASE_DIR / "pubspec.yaml"
+    if pubspec.exists():
+        content = pubspec.read_text(encoding="utf-8")
+        m = re.search(r'^version:\s*([^\s+]+)', content, re.MULTILINE)
+        if m:
+            return m.group(1).strip()
+    return "1.0.0"
+
+APP_VERSION = get_app_version()
 
 def get_flutter_cmd():
     user_flutter = Path.home() / "flutter" / "bin" / "flutter"
@@ -101,7 +113,7 @@ def build_linux(flutter_bin, log_file):
         print(f"[ERRORE] Directory bundle Linux {bundle_dir} non trovata.")
         return False
 
-    target_archive = RELEASES_DIR / "RAW_Manager_Ubuntu_x64_Bundle.tar.gz"
+    target_archive = RELEASES_DIR / f"RAW_Manager_v{APP_VERSION}_Ubuntu_x64_Bundle.tar.gz"
     print(f"Creazione archivio compresso {target_archive.name}...")
     with tarfile.open(target_archive, "w:gz") as tar:
         tar.add(bundle_dir, arcname="RAW_Manager")
@@ -126,7 +138,7 @@ def build_windows(flutter_bin, log_file):
         print(f"[ERRORE] Directory build Windows {runner_dir} non trovata.")
         return False
 
-    target_zip = RELEASES_DIR / "RAW_Manager_Windows_x64_Portable.zip"
+    target_zip = RELEASES_DIR / f"RAW_Manager_v{APP_VERSION}_Windows_x64_Portable.zip"
     print(f"Creazione archivio portatile {target_zip.name}...")
     with zipfile.ZipFile(target_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(runner_dir):
@@ -168,7 +180,7 @@ def build_android(flutter_bin, log_file):
             print("[ERRORE] File APK di output non trovato.")
             return False
 
-    target_apk = RELEASES_DIR / "RAW_Manager_Android_arm64.apk"
+    target_apk = RELEASES_DIR / f"RAW_Manager_v{APP_VERSION}_Android_arm64.apk"
     shutil.copy2(arm64_apk, target_apk)
     print(f"[OK] Release Android creata con successo: {target_apk}")
     return True

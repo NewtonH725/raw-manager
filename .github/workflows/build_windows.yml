@@ -55,10 +55,13 @@ jobs:
       - name: Package Windows Portable Bundle
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path releases/RAW_Manager_Windows_x64_Portable
-          Copy-Item -Recurse -Force build/windows/x64/runner/Release/* releases/RAW_Manager_Windows_x64_Portable/
-          Copy-Item assets/guida_raw_manager.md releases/RAW_Manager_Windows_x64_Portable/GUIDA_UTENTE.md
-          Compress-Archive -Path releases/RAW_Manager_Windows_x64_Portable/* -DestinationPath releases/RAW_Manager_Windows_x64_Portable.zip -Force
+          $ver = "${{ steps.app_version.outputs.version }}"
+          $dir = "releases/RAW_Manager_v${ver}_Windows_x64_Portable"
+          $zip = "releases/RAW_Manager_v${ver}_Windows_x64_Portable.zip"
+          New-Item -ItemType Directory -Force -Path $dir
+          Copy-Item -Recurse -Force build/windows/x64/runner/Release/* $dir/
+          Copy-Item assets/guida_raw_manager.md "$dir/GUIDA_UTENTE.md"
+          Compress-Archive -Path "$dir/*" -DestinationPath $zip -Force
 
       - name: Install Inno Setup
         shell: pwsh
@@ -77,10 +80,10 @@ jobs:
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: RAW_Manager_Windows_x64
+          name: RAW_Manager_v${{ steps.app_version.outputs.version }}_Windows_x64
           path: |
-            releases/RAW_Manager_Windows_x64_Setup.exe
-            releases/RAW_Manager_Windows_x64_Portable.zip
+            releases/RAW_Manager_v${{ steps.app_version.outputs.version }}_Windows_x64_Setup.exe
+            releases/RAW_Manager_v${{ steps.app_version.outputs.version }}_Windows_x64_Portable.zip
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -92,16 +95,17 @@ jobs:
             ## RAW Manager ${{ steps.app_version.outputs.tag }}
 
             ### Novità di questa versione:
-            - **Auto-Updater Integrato:** Controllo automatico delle nuove release su GitHub all'avvio dell'app con pop-up Material 3 e download diretto in-app.
-            - **Icona Centrata con Precisione Sub-Pixel:** Petali del diaframma perfettamente centrati su Android Adaptive Icons, Linux e Windows.
-            - **Barra Superiore Fissa & Swipe Touch:** Nessuna sovrapposizione alle immagini e scorrimento touch laterale fluido.
+            - **UI Adaptive Tablet vs Smartphone:** Layout dedicato e compatto su smartphone (Pixel 9 Pro XL) e layout esteso su tablet/desktop (Galaxy Tab S10 Ultra).
+            - **Testi centrati e SafeArea:** Correzione allineamento iniziale e barra inferiore protetta dalla barra gesti Android.
+            - **Supporto potenziato Ricoh GR IIIx DNG:** Estrazione di anteprime ad alta risoluzione e filtro contro stream Lossless non JPEG.
+            - **Nomi pacchetti con numero di versione:** Tutti i file scaricabili includono esplicitamente la versione della build.
 
             ### Pacchetti disponibili:
-            - **Windows (Installabile):** Scarica ed esegui **`RAW_Manager_Windows_x64_Setup.exe`**
-            - **Windows (Portable):** Scarica ed estrai **`RAW_Manager_Windows_x64_Portable.zip`**
-            - **Android:** Scarica e installa **`RAW_Manager_Android_arm64.apk`**
-            - **Linux:** Scarica **`RAW_Manager_Ubuntu_x64_Bundle.tar.gz`**
+            - **Windows (Installabile):** `RAW_Manager_v${{ steps.app_version.outputs.version }}_Windows_x64_Setup.exe`
+            - **Windows (Portable):** `RAW_Manager_v${{ steps.app_version.outputs.version }}_Windows_x64_Portable.zip`
+            - **Android:** `RAW_Manager_v${{ steps.app_version.outputs.version }}_Android_arm64.apk`
+            - **Linux:** `RAW_Manager_v${{ steps.app_version.outputs.version }}_Ubuntu_x64_Bundle.tar.gz`
           files: |
-            releases/RAW_Manager_Windows_x64_Setup.exe
-            releases/RAW_Manager_Windows_x64_Portable.zip
+            releases/RAW_Manager_v${{ steps.app_version.outputs.version }}_Windows_x64_Setup.exe
+            releases/RAW_Manager_v${{ steps.app_version.outputs.version }}_Windows_x64_Portable.zip
             docs/RAW_Manager_Guida_Ufficiale.pdf

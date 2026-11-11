@@ -87,7 +87,19 @@ Questo documento raccoglie in ordine cronologico e tematico tutto lo storico del
   - Creazione del servizio `lib/services/update_service.dart` per controllo asincrono all'avvio (`releases/latest` con timeout 4-5s per non bloccare l'uso offline sul campo), confronto SemVer e download progressivo mirato per OS (`.apk` su Android, `Setup.exe` su Windows, `.tar.gz` su Linux).
   - Creazione del pop-up Material 3 `lib/ui/widgets/update_dialog.dart` con note di rilascio, confronto versioni e barra di avanzamento download.
   - Supporto nativo Android in `MainActivity.kt` + `AndroidManifest.xml` (`INTERNET`, `REQUEST_INSTALL_PACKAGES`, `FileProvider`) per l'installazione diretta dell'APK scaricato; auto-chiusura e lancio Setup su Windows; aggiornamento automatico `~/.local/share/raw-manager/` su Linux.
-  - Pipeline CI dinamica collegata alla versione di `pubspec.yaml` (`1.1.0`).
+  - Pipeline CI dinamica collegata alla versione di `pubspec.yaml`.
+
+### Fase 10: Interfaccia Adaptive Smartphone/Tablet, Nomi File Versionati e Supporto DNG Ricoh GR IIIx (v1.2.0)
+- **Richieste Utente:**
+  1. *"Adatta l'interfaccia grafica alla dimensione dello schermo (perfetta su Samsung Galaxy Tab S10 Ultra, mentre su Pixel 9 Pro XL la scritta iniziale è decentrata e la barra superiore disordinata)."*
+  2. *"Sui file scaricabili dal repository GitHub indica anche l'attuale versione raggiunta dalla build."*
+  3. *"I file DNG di una Ricoh GR IIIx a volte danno 'Anteprima JPEG non decodificabile per questo file' oppure un'anteprima minuscola a bassissima risoluzione."*
+- **Implementazione:**
+  - **UI Adaptive (`< 720 dp` vs `>= 720 dp`):** layout esteso invariato per Tab S10 Ultra e Desktop; layout compatto simmetrico a griglia fissa per smartphone (Pixel 9 Pro XL), testi centrati (`textAlign: TextAlign.center`), padding 28px e `SafeArea` inferiore anti-sovrapposizione gesti.
+  - **Diagnostica e Fix Ricoh GR IIIx DNG (Dart + Kotlin):**
+    - I DNG Ricoh GR IIIx salvano l'anteprima ad alta risoluzione (1620×1080) in `SubIFD1` tramite `StripOffsets` (`0x0111`) / `StripByteCounts` (`0x0117`) con `Compression = 7` e una thumbnail 160×120 separata, mentre i dati RAW del sensore usano **Lossless JPEG (`SOF3 = 0xFF 0xC3`)** che inizia anch'esso con `0xFF 0xD8`.
+    - Aggiornati sia `lib/services/raf_extractor.dart` che `MainActivity.kt` per supportare `0x0111`/`0x0117`, attraversare sempre `nextIfdOffset` (`IFD1`), scartare fotometriche CFA/LinearRaw e verificare i marker `SOF0/SOF1/SOF2` 8-bit rigettando `SOF3` Lossless ed evitando troncamenti sulle thumbnail `APP1` annidate.
+  - **Nomi File Versionati:** tutti i pacchetti scaricabili (`RAW_Manager_v1.2.0_...`) espongono esplicitamente la versione della build.
 
 ---
 

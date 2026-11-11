@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/update_service.dart';
 
 class InfoDialog extends StatelessWidget {
   const InfoDialog({super.key});
@@ -34,13 +35,13 @@ class InfoDialog extends StatelessWidget {
                     child: const Icon(Icons.auto_stories_rounded, color: Colors.amber, size: 28),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'RAW Manager — Guida Semplice',
-                          style: TextStyle(
+                          'RAW Manager v${UpdateService.appVersion} — Guida Semplice',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
