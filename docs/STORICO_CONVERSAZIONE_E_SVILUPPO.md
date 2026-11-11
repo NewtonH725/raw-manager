@@ -71,6 +71,15 @@ Questo documento raccoglie in ordine cronologico e tematico tutto lo storico del
   - Script batch a un clic `build_windows.bat` per la compilazione locale.
   - Pipeline GitHub Actions `.github/workflows/build_windows.yml` che compila automaticamente su server Windows nel cloud ad ogni push e pubblica entrambe le versioni nella pagina GitHub Releases.
 
+### Fase 8: Documentazione Storica, Guida PDF e Centratura Pixel-Perfect dell'Icona
+- **Richieste Utente:**
+  1. *"Crea una cartella docs in questo progetto in cui salvi tutto lo storico di quello che ci siamo detti (e lo mantieni aggiornato). Poi crea una guida in pdf con le immagini delle schermate dell'app e aggiungi questa descrizione anche su github."*
+  2. *"Nell'icona, centra meglio i petali del diaframma rispetto al cerchio. Al momento sono leggermente decentrati verso l'alto."*
+- **Implementazione:**
+  - Creazione della cartella `docs/` con il manuale PDF illustrato `RAW_Manager_Guida_Ufficiale.pdf`, gli screenshot ad alta risoluzione e questo storico.
+  - Aggiornamento di `README.md` su GitHub e upload diretto del PDF nelle Releases v1.0.0.
+  - Analisi del descentramento dell'icona (`13.5px` verso l'alto dovuto alle metriche interne asimmetriche di Pillow `textbbox`) e riscrittura di `execution/generate_app_icon.py` con ritaglio esatto tramite bounding box sui pixel (`Image.getbbox()`) su oversampling 2048px, garantendo una centratura matematica sub-pixel su Android, Linux e Windows.
+
 ---
 
 ## 3. Riepilogo Stato Artefatti e Repository
