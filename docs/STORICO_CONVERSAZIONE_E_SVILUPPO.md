@@ -117,3 +117,9 @@ Questo documento raccoglie in ordine cronologico e tematico tutto lo storico del
   - `RAW_Manager_Windows_x64_Portable.zip` (Versione Windows Portatile)
   - `RAW_Manager_Android_arm64.apk` (Pacchetto Android arm64)
   - `RAW_Manager_Ubuntu_x64_Bundle.tar.gz` (Bundle Linux)
+
+### Fase 12: Fix Visibilità Completa EXIF su Smartphone (v1.2.2)
+- **Problema su Pixel 9 Pro XL / Schermi Compatti:** Nella riga inferiore della barra HUD compatta (`_buildCompactLayout`), il nome file era racchiuso in `Expanded` (50% fisso) e i metadati EXIF erano allineati a destra dentro `Flexible` con `TextOverflow.ellipsis`, lasciando spazio vuoto al centro e troncando valori finali come gli ISO (`ISO 50...`).
+- **Soluzione UI Inline + Wrap:** Sostituito il layout diviso in `lib/ui/widgets/hud_overlay.dart` con un `Wrap` allineato a sinistra che posiziona subito dopo il nome file (e l'eventuale badge `COPIATA`) un separatore verticale `|` e i singoli campi EXIF (`_buildCompactExifChips`) separati da `•`, senza troncamenti (`ellipsis`) e andando a capo in modo ordinato se necessario, garantendo la leggibilità completa di fotocamera, tempo, diaframma, ISO e focale.
+- **Test di Regressione:** Aggiunto `test/hud_overlay_exif_test.dart` con verifica su viewport smartphone `412x915` (Pixel 9 Pro XL) e tablet `1480x920` (Galaxy Tab S10 Ultra).
+- **Release v1.2.2+5:** Aggiornata la versione per attivare l'auto-aggiornamento dai dispositivi `v1.2.1` e generati i pacchetti versionati (`RAW_Manager_v1.2.2_*`).

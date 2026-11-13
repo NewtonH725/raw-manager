@@ -4,7 +4,7 @@
   <p><b>Culling fotografico ultra-reattivo (&lt;10ms) per Fujifilm RAF (X-T5) e formati RAW universali</b></p>
   
   <p>
-    <a href="https://github.com/NewtonH725/raw-manager/releases/latest"><img src="https://img.shields.io/badge/Release-v1.2.1-gold.svg?style=flat-square" alt="Release v1.2.1" /></a>
+    <a href="https://github.com/NewtonH725/raw-manager/releases/latest"><img src="https://img.shields.io/badge/Release-v1.2.2-gold.svg?style=flat-square" alt="Release v1.2.2" /></a>
     <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Android-blue.svg?style=flat-square" alt="Piattaforme" />
     <img src="https://img.shields.io/badge/Latency-%3C%206ms%20per%20frame-brightgreen.svg?style=flat-square" alt="Latenza" />
     <img src="https://img.shields.io/badge/Architecture-DOE%203--Tier-orange.svg?style=flat-square" alt="Architettura" />
@@ -48,10 +48,10 @@ Tutte le versioni precompilate sono disponibili nella sezione [**GitHub Releases
 
 | Piattaforma | Pacchetto | Tipo | Descrizione |
 | :--- | :--- | :--- | :--- |
-| **🪟 Windows (x64)** | [**`RAW_Manager_v1.2.1_Windows_x64_Setup.exe`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Installer | Setup guidato Inno Setup, icona Desktop, Menù Start, disinstallatore pulito |
-| **🪟 Windows (x64)** | [**`RAW_Manager_v1.2.1_Windows_x64_Portable.zip`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Portable | Eseguibile autonomo senza installazione, utilizzabile anche da chiavetta USB |
-| **📱 Android** | [**`RAW_Manager_v1.2.1_Android_arm64.apk`**](https://github.com/NewtonH725/raw-manager/releases/latest) | APK | Compatibile con Android 10..17, Adaptive UI & Icons, supporto schede SD USB-C OTG |
-| **🐧 Linux** | [**`RAW_Manager_v1.2.1_Ubuntu_x64_Bundle.tar.gz`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Bundle | Applicazione desktop nativa XDG con avvio istantaneo e lanciatore `.desktop` |
+| **🪟 Windows (x64)** | [**`RAW_Manager_v1.2.2_Windows_x64_Setup.exe`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Installer | Setup guidato Inno Setup, icona Desktop, Menù Start, disinstallatore pulito |
+| **🪟 Windows (x64)** | [**`RAW_Manager_v1.2.2_Windows_x64_Portable.zip`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Portable | Eseguibile autonomo senza installazione, utilizzabile anche da chiavetta USB |
+| **📱 Android** | [**`RAW_Manager_v1.2.2_Android_arm64.apk`**](https://github.com/NewtonH725/raw-manager/releases/latest) | APK | Compatibile con Android 10..17, Adaptive UI & Icons, supporto schede SD USB-C OTG |
+| **🐧 Linux** | [**`RAW_Manager_v1.2.2_Ubuntu_x64_Bundle.tar.gz`**](https://github.com/NewtonH725/raw-manager/releases/latest) | Bundle | Applicazione desktop nativa XDG con avvio istantaneo e lanciatore `.desktop` |
 | **📄 Documentazione** | [**`RAW_Manager_Guida_Ufficiale.pdf`**](docs/RAW_Manager_Guida_Ufficiale.pdf) | PDF | Manuale utente illustrato a colori di 6 pagine con flussi operativi completi |
 
 ---

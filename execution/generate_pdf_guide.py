@@ -209,7 +209,7 @@ def main():
     <img src="{img_logo}" class="cover-logo" alt="Logo">
     <div class="cover-title-group">
       <h1>RAW Manager</h1>
-      <div class="subtitle">Guida Utente e Manuale Operativo Ufficiale (v1.2.1)</div>
+      <div class="subtitle">Guida Utente e Manuale Operativo Ufficiale (v1.2.2)</div>
     </div>
   </div>
 

@@ -144,44 +144,35 @@ class HudOverlay extends ConsumerWidget {
           ],
         ),
 
-        // Riga 3 (solo con foto caricata): Nome file, badge selezionata ed EXIF compatto
+        // Riga 3 (solo con foto caricata): Nome file, badge selezionata ed EXIF inline senza troncamenti
         if (currentPhoto != null) ...[
           const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        currentPhoto!.fileName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (currentPhoto!.isCopied) ...[
-                      const SizedBox(width: 6),
-                      _buildSelectedBadge(compact: true),
-                    ],
-                  ],
-                ),
-              ),
-              if (extractedData != null && extractedData!.exifSummary.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    extractedData!.exifSummary,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(color: Colors.white60, fontSize: 11),
-                    overflow: TextOverflow.ellipsis,
+          SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 5,
+              runSpacing: 3,
+              children: [
+                Text(
+                  currentPhoto!.fileName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (currentPhoto!.isCopied) _buildSelectedBadge(compact: true),
+                if (extractedData != null && extractedData!.exifSummary.isNotEmpty) ...[
+                  Container(
+                    width: 1.5,
+                    height: 11,
+                    color: Colors.white38,
+                  ),
+                  ..._buildCompactExifChips(extractedData!.exifSummary),
+                ],
               ],
-            ],
+            ),
           ),
           if (queue.pendingCount > 0 || queue.isProcessing) ...[
             const SizedBox(height: 4),
@@ -454,6 +445,36 @@ class HudOverlay extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildCompactExifChips(String exifSummary) {
+    final parts = exifSummary
+        .split('•')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    return [
+      for (var i = 0; i < parts.length; i++)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                parts[i],
+                style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+              ),
+            ),
+            if (i < parts.length - 1) ...[
+              const SizedBox(width: 5),
+              const Text(
+                '•',
+                style: TextStyle(color: Colors.white38, fontSize: 11.5),
+              ),
+            ],
+          ],
+        ),
+    ];
   }
 
   Widget _buildQueueIndicator(FileOperationsQueue queue) {
